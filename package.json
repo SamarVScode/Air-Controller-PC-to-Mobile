@@ -1,0 +1,13 @@
+{
+  "name": "daily-task-alert-gas",
+  "version": "1.0.0",
+  "description": "Daily Task Alert System Google Apps Script in TypeScript",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/google-apps-script": "^1.0.83",
+    "typescript": "^5.4.0"
+  }
+}
