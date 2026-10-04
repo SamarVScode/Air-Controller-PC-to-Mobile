@@ -1,8 +1,16 @@
+/**
+ * @aegis-contract
+ * @claim Dynamic Jetpack Compose Touch HUD with Profile Customization
+ * @true Dynamically positions and renders all 20 HUD controls from activeProfile.controls
+ * @true Provides top status bar with connection state, ping, PAIR PC, EDIT LAYOUT, and GYRO chip
+ * @false Hardcodes control positions or omits active profile bindings
+ */
 package com.gamepad.controller.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
@@ -23,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -31,19 +40,24 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gamepad.controller.data.ButtonBehavior
 import com.gamepad.controller.data.ConnectionStatus
+import com.gamepad.controller.data.ControlConfig
 import com.gamepad.controller.data.KeyId
 import com.gamepad.controller.data.MouseButton
 import com.gamepad.controller.haptics.HapticsManager
 import com.gamepad.controller.input.InputStateHolder
 import com.gamepad.controller.input.LookAccumulator
 import com.gamepad.controller.network.UdpSenderThread
+import com.gamepad.controller.profile.ProfileManager
 import com.gamepad.controller.ui.components.LookZoneCanvas
 import com.gamepad.controller.ui.components.TouchButton
 import com.gamepad.controller.ui.components.VirtualJoystick
 
 /**
- * GamepadHudScreen: Authoritative Jetpack Compose HUD layout rendering the complete
- * PUBG Mobile style touch controls from PLAN.md Rev 4 Section 3.
+ * GamepadHudScreen: Dynamic Jetpack Compose HUD layout rendering the complete
+ * PUBG Mobile style touch controls from active GamepadLayoutProfile.
+ * 
+ * Supports dynamic control coordinates (xPercent, yPercent), size scaling,
+ * opacity, and tactical cyberpunk top status bar with pairing and editor triggers.
  */
 @Composable
 fun GamepadHudScreen(
@@ -51,9 +65,13 @@ fun GamepadHudScreen(
     lookAccumulator: LookAccumulator,
     hapticsManager: HapticsManager,
     senderThread: UdpSenderThread?,
+    profileManager: ProfileManager,
+    onOpenEditLayout: () -> Unit,
     onOpenPairing: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val activeProfile by profileManager.activeProfile.collectAsState()
+
     val connectionState by (senderThread?.connectionStatusFlow
         ?: remember { mutableStateOf(ConnectionStatus.DISCONNECTED) }
     ).let {
@@ -69,7 +87,23 @@ fun GamepadHudScreen(
     }
 
     var isAdsActive by remember { mutableStateOf(false) }
-    var isGyroActive by remember { mutableStateOf(false) }
+    var isGyroActive by remember { mutableStateOf(activeProfile.settings.gyroEnabled) }
+
+    val controlsMap = remember(activeProfile) {
+        activeProfile.controls.associateBy { it.id }
+    }
+
+    fun getControl(id: String, defX: Float, defY: Float, defW: Float, defH: Float, defOpacity: Float): ControlConfig {
+        return controlsMap[id] ?: ControlConfig(
+            id = id,
+            type = "button",
+            x = defX,
+            y = defY,
+            width = defW,
+            height = defH,
+            opacity = defOpacity
+        )
+    }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val screenWidth = maxWidth
@@ -78,69 +112,78 @@ fun GamepadHudScreen(
         // 1. Dedicated Swipe-to-Look Zone (x = 42% to 100%, behind controls)
         LookZoneCanvas(
             lookAccumulator = lookAccumulator,
-            touchSensitivity = 1.0f,
-            adsSensitivityMultiplier = 0.6f,
+            touchSensitivity = activeProfile.settings.touchSensitivity,
+            adsSensitivityMultiplier = activeProfile.settings.adsSensitivityMultiplier,
             isAdsActive = isAdsActive,
             modifier = Modifier
                 .offset(x = screenWidth * 0.42f, y = 0.dp)
                 .size(width = screenWidth * 0.58f, height = screenHeight)
         )
 
-        // 2. Move Stick (ms): x:16%, y:66%, size:17%
-        val msSize = screenWidth * 0.17f
+        // 2. Move Stick (ms): default x:16%, y:66%, size:17%
+        val msCfg = getControl("ms", 16.0f, 66.0f, 17.0f, 17.0f, 0.75f)
+        val msSize = screenWidth * (msCfg.width / 100f)
         VirtualJoystick(
             size = msSize,
-            deadzone = 0.35f,
+            deadzone = activeProfile.settings.stickDeadzone,
             sprintThreshold = 0.85f,
-            floatingOrigin = true,
+            floatingOrigin = activeProfile.settings.stickFloatingOrigin,
             hapticsManager = hapticsManager,
             onDirectionChanged = { normX, normY, isSprint ->
                 inputStateHolder.setStickDirection(normX, normY, isSprint)
             },
             modifier = Modifier
-                .alignCenter(screenWidth * 0.16f, screenHeight * 0.66f, msSize, msSize)
+                .alignCenter(screenWidth * (msCfg.x / 100f), screenHeight * (msCfg.y / 100f), msSize, msSize)
+                .alpha(msCfg.opacity)
         )
 
-        // 3. Sprint Lock Toggle (run): x:16%, y:34%, size:5.6%
-        val runSize = screenWidth * 0.056f
+        // 3. Sprint Lock Toggle (run): default x:16%, y:34%, size:5.6%
+        val runCfg = getControl("run", 16.0f, 34.0f, 5.6f, 5.6f, 0.75f)
+        val runSize = screenWidth * (runCfg.width / 100f)
         TouchButton(
             label = "RUN",
             behavior = ButtonBehavior.TOGGLE,
             hapticsManager = hapticsManager,
             onStateChange = { active -> inputStateHolder.setKey(KeyId.LEFT_SHIFT, active) },
             modifier = Modifier
-                .alignCenter(screenWidth * 0.16f, screenHeight * 0.34f, runSize, runSize)
+                .alignCenter(screenWidth * (runCfg.x / 100f), screenHeight * (runCfg.y / 100f), runSize, runSize)
+                .alpha(runCfg.opacity)
         )
 
-        // 4. Left Fire (lfire): LMB hold, x:31%, y:58%, size:9%
-        val lfireSize = screenWidth * 0.09f
+        // 4. Left Fire (lfire): LMB hold, default x:31%, y:58%, size:9%
+        val lfireCfg = getControl("lfire", 31.0f, 58.0f, 9.0f, 9.0f, 0.85f)
+        val lfireSize = screenWidth * (lfireCfg.width / 100f)
         TouchButton(
             label = "FIRE",
             behavior = ButtonBehavior.HOLD,
             hapticsManager = hapticsManager,
             onStateChange = { active -> inputStateHolder.setMouseButton(MouseButton.LMB, active) },
             modifier = Modifier
-                .alignCenter(screenWidth * 0.31f, screenHeight * 0.58f, lfireSize, lfireSize)
+                .alignCenter(screenWidth * (lfireCfg.x / 100f), screenHeight * (lfireCfg.y / 100f), lfireSize, lfireSize)
+                .alpha(lfireCfg.opacity)
         )
 
-        // 5. Right Fire & Look (rfire): LMB hold + drag-to-look, x:86%, y:64%, size:14%
-        val rfireSize = screenWidth * 0.14f
+        // 5. Right Fire & Look (rfire): LMB hold + drag-to-look, default x:86%, y:64%, size:14%
+        val rfireCfg = getControl("rfire", 86.0f, 64.0f, 14.0f, 14.0f, 0.85f)
+        val rfireSize = screenWidth * (rfireCfg.width / 100f)
         TouchButton(
             label = "FIRE",
             behavior = ButtonBehavior.HOLD,
             allowDragLook = true,
             onLookDelta = { dx, dy ->
-                val mult = if (isAdsActive) 0.6f else 1.0f
+                val mult = if (isAdsActive) activeProfile.settings.adsSensitivityMultiplier else 1.0f
                 lookAccumulator.addDeltas(dx * mult, dy * mult)
             },
             hapticsManager = hapticsManager,
             onStateChange = { active -> inputStateHolder.setMouseButton(MouseButton.LMB, active) },
             modifier = Modifier
-                .alignCenter(screenWidth * 0.86f, screenHeight * 0.64f, rfireSize, rfireSize)
+                .alignCenter(screenWidth * (rfireCfg.x / 100f), screenHeight * (rfireCfg.y / 100f), rfireSize, rfireSize)
+                .alpha(rfireCfg.opacity)
         )
 
-        // 6. Aim Down Sights (scope): RMB toggle, x:73%, y:47%, size:8%
-        val scopeSize = screenWidth * 0.08f
+        // 6. Aim Down Sights (scope): RMB toggle, default x:73%, y:47%, size:8%
+        val scopeCfg = getControl("scope", 73.0f, 47.0f, 8.0f, 8.0f, 0.85f)
+        val scopeSize = screenWidth * (scopeCfg.width / 100f)
         TouchButton(
             label = "ADS",
             behavior = ButtonBehavior.TOGGLE,
@@ -150,186 +193,224 @@ fun GamepadHudScreen(
                 inputStateHolder.setMouseButton(MouseButton.RMB, active)
             },
             modifier = Modifier
-                .alignCenter(screenWidth * 0.73f, screenHeight * 0.47f, scopeSize, scopeSize)
+                .alignCenter(screenWidth * (scopeCfg.x / 100f), screenHeight * (scopeCfg.y / 100f), scopeSize, scopeSize)
+                .alpha(scopeCfg.opacity)
         )
 
-        // 7. Jump: Space hold, x:94%, y:38%, size:8%
-        val jumpSize = screenWidth * 0.08f
+        // 7. Jump: Space hold, default x:94%, y:38%, size:8%
+        val jumpCfg = getControl("jump", 94.0f, 38.0f, 8.0f, 8.0f, 0.85f)
+        val jumpSize = screenWidth * (jumpCfg.width / 100f)
         TouchButton(
             label = "JUMP",
             behavior = ButtonBehavior.HOLD,
             hapticsManager = hapticsManager,
             onStateChange = { active -> inputStateHolder.setKey(KeyId.SPACE, active) },
             modifier = Modifier
-                .alignCenter(screenWidth * 0.94f, screenHeight * 0.38f, jumpSize, jumpSize)
+                .alignCenter(screenWidth * (jumpCfg.x / 100f), screenHeight * (jumpCfg.y / 100f), jumpSize, jumpSize)
+                .alpha(jumpCfg.opacity)
         )
 
-        // 8. Crouch: C hold, x:76%, y:84%, size:7%
-        val crouchSize = screenWidth * 0.07f
+        // 8. Crouch: C hold, default x:76%, y:84%, size:7%
+        val crouchCfg = getControl("crouch", 76.0f, 84.0f, 7.0f, 7.0f, 0.85f)
+        val crouchSize = screenWidth * (crouchCfg.width / 100f)
         TouchButton(
             label = "CROUCH",
             behavior = ButtonBehavior.HOLD,
             hapticsManager = hapticsManager,
             onStateChange = { active -> inputStateHolder.setKey(KeyId.C, active) },
             modifier = Modifier
-                .alignCenter(screenWidth * 0.76f, screenHeight * 0.84f, crouchSize, crouchSize)
+                .alignCenter(screenWidth * (crouchCfg.x / 100f), screenHeight * (crouchCfg.y / 100f), crouchSize, crouchSize)
+                .alpha(crouchCfg.opacity)
         )
 
-        // 9. Prone: Z hold, x:95%, y:88%, size:7%
-        val proneSize = screenWidth * 0.07f
+        // 9. Prone: Z hold, default x:95%, y:88%, size:7%
+        val proneCfg = getControl("prone", 95.0f, 88.0f, 7.0f, 7.0f, 0.85f)
+        val proneSize = screenWidth * (proneCfg.width / 100f)
         TouchButton(
             label = "PRONE",
             behavior = ButtonBehavior.HOLD,
             hapticsManager = hapticsManager,
             onStateChange = { active -> inputStateHolder.setKey(KeyId.Z, active) },
             modifier = Modifier
-                .alignCenter(screenWidth * 0.95f, screenHeight * 0.88f, proneSize, proneSize)
+                .alignCenter(screenWidth * (proneCfg.x / 100f), screenHeight * (proneCfg.y / 100f), proneSize, proneSize)
+                .alpha(proneCfg.opacity)
         )
 
-        // 10. Lean Left (leanl): Q hold, x:62%, y:32%, size:6%
-        val leanSize = screenWidth * 0.06f
+        // 10. Lean Left (leanl): Q hold, default x:62%, y:32%, size:6%
+        val leanlCfg = getControl("leanl", 62.0f, 32.0f, 6.0f, 6.0f, 0.8f)
+        val leanlSize = screenWidth * (leanlCfg.width / 100f)
         TouchButton(
             label = "LEAN L",
             behavior = ButtonBehavior.HOLD,
             hapticsManager = hapticsManager,
             onStateChange = { active -> inputStateHolder.setKey(KeyId.Q, active) },
             modifier = Modifier
-                .alignCenter(screenWidth * 0.62f, screenHeight * 0.32f, leanSize, leanSize)
+                .alignCenter(screenWidth * (leanlCfg.x / 100f), screenHeight * (leanlCfg.y / 100f), leanlSize, leanlSize)
+                .alpha(leanlCfg.opacity)
         )
 
-        // 11. Lean Right (leanr): E hold, x:70%, y:32%, size:6%
+        // 11. Lean Right (leanr): E hold, default x:70%, y:32%, size:6%
+        val leanrCfg = getControl("leanr", 70.0f, 32.0f, 6.0f, 6.0f, 0.8f)
+        val leanrSize = screenWidth * (leanrCfg.width / 100f)
         TouchButton(
             label = "LEAN R",
             behavior = ButtonBehavior.HOLD,
             hapticsManager = hapticsManager,
             onStateChange = { active -> inputStateHolder.setKey(KeyId.E, active) },
             modifier = Modifier
-                .alignCenter(screenWidth * 0.70f, screenHeight * 0.32f, leanSize, leanSize)
+                .alignCenter(screenWidth * (leanrCfg.x / 100f), screenHeight * (leanrCfg.y / 100f), leanrSize, leanrSize)
+                .alpha(leanrCfg.opacity)
         )
 
-        // 12. Reload: R hold, x:64%, y:68%, size:6.4%
-        val reloadSize = screenWidth * 0.064f
+        // 12. Reload: R hold, default x:64%, y:68%, size:6.4%
+        val reloadCfg = getControl("reload", 64.0f, 68.0f, 6.4f, 6.4f, 0.85f)
+        val reloadSize = screenWidth * (reloadCfg.width / 100f)
         TouchButton(
             label = "RELOAD",
             behavior = ButtonBehavior.HOLD,
             hapticsManager = hapticsManager,
             onStateChange = { active -> inputStateHolder.setKey(KeyId.R, active) },
             modifier = Modifier
-                .alignCenter(screenWidth * 0.64f, screenHeight * 0.68f, reloadSize, reloadSize)
+                .alignCenter(screenWidth * (reloadCfg.x / 100f), screenHeight * (reloadCfg.y / 100f), reloadSize, reloadSize)
+                .alpha(reloadCfg.opacity)
         )
 
-        // 13. Use/Pick Up: F hold, x:58%, y:54%, size:6.4%
-        val useSize = screenWidth * 0.064f
+        // 13. Use/Pick Up: F hold, default x:58%, y:54%, size:6.4%
+        val useCfg = getControl("use", 58.0f, 54.0f, 6.4f, 6.4f, 0.8f)
+        val useSize = screenWidth * (useCfg.width / 100f)
         TouchButton(
             label = "USE",
             behavior = ButtonBehavior.HOLD,
             hapticsManager = hapticsManager,
             onStateChange = { active -> inputStateHolder.setKey(KeyId.F, active) },
             modifier = Modifier
-                .alignCenter(screenWidth * 0.58f, screenHeight * 0.54f, useSize, useSize)
+                .alignCenter(screenWidth * (useCfg.x / 100f), screenHeight * (useCfg.y / 100f), useSize, useSize)
+                .alpha(useCfg.opacity)
         )
 
-        // 14. Weapon Slot 1 (s1): 1 hold, x:38%, y:15%, size:6%
-        val weaponSize = screenWidth * 0.06f
+        // 14. Weapon Slot 1 (s1): 1 hold, default x:38%, y:15%, size:6%
+        val s1Cfg = getControl("s1", 38.0f, 15.0f, 6.0f, 6.0f, 0.75f)
+        val s1Size = screenWidth * (s1Cfg.width / 100f)
         TouchButton(
             label = "SLOT 1",
             behavior = ButtonBehavior.HOLD,
             hapticsManager = hapticsManager,
             onStateChange = { active -> inputStateHolder.setKey(KeyId.KEY_1, active) },
             modifier = Modifier
-                .alignCenter(screenWidth * 0.38f, screenHeight * 0.15f, weaponSize, weaponSize)
+                .alignCenter(screenWidth * (s1Cfg.x / 100f), screenHeight * (s1Cfg.y / 100f), s1Size, s1Size)
+                .alpha(s1Cfg.opacity)
         )
 
-        // 15. Weapon Slot 2 (s2): 2 hold, x:44.5%, y:15%, size:6%
+        // 15. Weapon Slot 2 (s2): 2 hold, default x:44.5%, y:15%, size:6%
+        val s2Cfg = getControl("s2", 44.5f, 15.0f, 6.0f, 6.0f, 0.75f)
+        val s2Size = screenWidth * (s2Cfg.width / 100f)
         TouchButton(
             label = "SLOT 2",
             behavior = ButtonBehavior.HOLD,
             hapticsManager = hapticsManager,
             onStateChange = { active -> inputStateHolder.setKey(KeyId.KEY_2, active) },
             modifier = Modifier
-                .alignCenter(screenWidth * 0.445f, screenHeight * 0.15f, weaponSize, weaponSize)
+                .alignCenter(screenWidth * (s2Cfg.x / 100f), screenHeight * (s2Cfg.y / 100f), s2Size, s2Size)
+                .alpha(s2Cfg.opacity)
         )
 
-        // 16. Melee Slot (s3): 3 hold, x:51%, y:15%, size:6%
+        // 16. Melee Slot (s3): 3 hold, default x:51%, y:15%, size:6%
+        val s3Cfg = getControl("s3", 51.0f, 15.0f, 6.0f, 6.0f, 0.75f)
+        val s3Size = screenWidth * (s3Cfg.width / 100f)
         TouchButton(
             label = "MELEE",
             behavior = ButtonBehavior.HOLD,
             hapticsManager = hapticsManager,
             onStateChange = { active -> inputStateHolder.setKey(KeyId.KEY_3, active) },
             modifier = Modifier
-                .alignCenter(screenWidth * 0.51f, screenHeight * 0.15f, weaponSize, weaponSize)
+                .alignCenter(screenWidth * (s3Cfg.x / 100f), screenHeight * (s3Cfg.y / 100f), s3Size, s3Size)
+                .alpha(s3Cfg.opacity)
         )
 
-        // 17. Grenade (gren): G hold, x:58%, y:15%, size:6%
+        // 17. Grenade (gren): G hold, default x:58%, y:15%, size:6%
+        val grenCfg = getControl("gren", 58.0f, 15.0f, 6.0f, 6.0f, 0.75f)
+        val grenSize = screenWidth * (grenCfg.width / 100f)
         TouchButton(
             label = "GREN",
             behavior = ButtonBehavior.HOLD,
             hapticsManager = hapticsManager,
             onStateChange = { active -> inputStateHolder.setKey(KeyId.G, active) },
             modifier = Modifier
-                .alignCenter(screenWidth * 0.58f, screenHeight * 0.15f, weaponSize, weaponSize)
+                .alignCenter(screenWidth * (grenCfg.x / 100f), screenHeight * (grenCfg.y / 100f), grenSize, grenSize)
+                .alpha(grenCfg.opacity)
         )
 
-        // 18. Heal (heal): 5 hold, x:65%, y:15%, size:6%
+        // 18. Heal (heal): 5 hold, default x:65%, y:15%, size:6%
+        val healCfg = getControl("heal", 65.0f, 15.0f, 6.0f, 6.0f, 0.75f)
+        val healSize = screenWidth * (healCfg.width / 100f)
         TouchButton(
             label = "HEAL",
             behavior = ButtonBehavior.HOLD,
             hapticsManager = hapticsManager,
             onStateChange = { active -> inputStateHolder.setKey(KeyId.KEY_5, active) },
             modifier = Modifier
-                .alignCenter(screenWidth * 0.65f, screenHeight * 0.15f, weaponSize, weaponSize)
+                .alignCenter(screenWidth * (healCfg.x / 100f), screenHeight * (healCfg.y / 100f), healSize, healSize)
+                .alpha(healCfg.opacity)
         )
 
-        // 19. Map: M hold, x:84%, y:12%, size:5.4%
-        val utilitySize = screenWidth * 0.054f
+        // 19. Map: M hold, default x:84%, y:12%, size:5.4%
+        val mapCfg = getControl("map", 84.0f, 12.0f, 5.4f, 5.4f, 0.75f)
+        val mapSize = screenWidth * (mapCfg.width / 100f)
         TouchButton(
             label = "MAP",
             behavior = ButtonBehavior.HOLD,
             hapticsManager = hapticsManager,
             onStateChange = { active -> inputStateHolder.setKey(KeyId.M, active) },
             modifier = Modifier
-                .alignCenter(screenWidth * 0.84f, screenHeight * 0.12f, utilitySize, utilitySize)
+                .alignCenter(screenWidth * (mapCfg.x / 100f), screenHeight * (mapCfg.y / 100f), mapSize, mapSize)
+                .alpha(mapCfg.opacity)
         )
 
-        // 20. Bag (Inventory): Tab hold, x:91%, y:12%, size:5.4%
+        // 20. Bag (Inventory): Tab hold, default x:91%, y:12%, size:5.4%
+        val bagCfg = getControl("bag", 91.0f, 12.0f, 5.4f, 5.4f, 0.75f)
+        val bagSize = screenWidth * (bagCfg.width / 100f)
         TouchButton(
             label = "BAG",
             behavior = ButtonBehavior.HOLD,
             hapticsManager = hapticsManager,
             onStateChange = { active -> inputStateHolder.setKey(KeyId.TAB, active) },
             modifier = Modifier
-                .alignCenter(screenWidth * 0.91f, screenHeight * 0.12f, utilitySize, utilitySize)
+                .alignCenter(screenWidth * (bagCfg.x / 100f), screenHeight * (bagCfg.y / 100f), bagSize, bagSize)
+                .alpha(bagCfg.opacity)
         )
 
-        // 21. Gyro Toggle Chip: x:50%, y:90%, size:15% x 4.8%
-        val gyroWidth = screenWidth * 0.15f
-        val gyroHeight = screenHeight * 0.048f
-        TouchButton(
-            label = if (isGyroActive) "GYRO ON" else "GYRO OFF",
-            behavior = ButtonBehavior.TOGGLE,
-            hapticsManager = hapticsManager,
-            onStateChange = { active -> isGyroActive = active },
-            modifier = Modifier
-                .alignCenter(screenWidth * 0.50f, screenHeight * 0.90f, gyroWidth, gyroHeight)
-        )
-
-        // Top Status Bar: Connection, RTT, and Pairing Trigger
+        // Top Status Bar: Connection Badge, Pair Pill, Edit Layout Pill, and Gyro Chip
         TopStatusBar(
             connectionStatus = connectionState,
             rttMs = rttMs,
+            isGyroActive = isGyroActive,
+            onToggleGyro = { isGyroActive = !isGyroActive },
             onOpenPairing = onOpenPairing,
+            onOpenEditLayout = onOpenEditLayout,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 10.dp)
+                .padding(top = 8.dp)
         )
     }
 }
 
+/**
+ * Cyberpunk tactical Top Status Bar.
+ * 
+ * Features:
+ * - Connection status indicator + latency ping in ms
+ * - Clickable 'PAIR PC' pill
+ * - Clickable 'EDIT LAYOUT' pill with cyan border
+ * - Clickable 'GYRO' toggle chip
+ */
 @Composable
 private fun TopStatusBar(
     connectionStatus: ConnectionStatus,
     rttMs: Long,
+    isGyroActive: Boolean,
+    onToggleGyro: () -> Unit,
     onOpenPairing: () -> Unit,
+    onOpenEditLayout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val statusColor = when (connectionStatus) {
@@ -341,33 +422,99 @@ private fun TopStatusBar(
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(Color(0xB310141D))
-            .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(20.dp))
-            .clickable { onOpenPairing() }
-            .padding(horizontal = 14.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color(0xE610141D))
+            .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(24.dp))
+            .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
-        Box(
+        // 1. Connection Status Badge
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .size(10.dp)
-                .clip(CircleShape)
-                .background(statusColor)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = connectionStatus.name,
-            color = Color.White,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold
-        )
-        if (connectionStatus == ConnectionStatus.CONNECTED) {
-            Spacer(modifier = Modifier.width(10.dp))
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color(0x33FFFFFF))
+                .padding(horizontal = 10.dp, vertical = 4.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(statusColor)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
             Text(
-                text = "${rttMs}ms",
-                color = Color(0xFFB0BEC5),
+                text = connectionStatus.name,
+                color = Color.White,
                 fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.Bold
+            )
+            if (connectionStatus == ConnectionStatus.CONNECTED) {
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "${rttMs}ms",
+                    color = Color(0xFF00E5FF),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+
+        // 2. 🔗 'PAIR PC' Clickable Pill
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color(0x2600E5FF))
+                .border(1.dp, Color(0x6600E5FF), RoundedCornerShape(16.dp))
+                .clickable { onOpenPairing() }
+                .padding(horizontal = 10.dp, vertical = 4.dp)
+        ) {
+            Text(
+                text = "🔗 PAIR PC",
+                color = Color(0xFF80D8FF),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        // 3. ✏️ 'EDIT LAYOUT' Clickable Pill (Cyan Border)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color(0x2210141D))
+                .border(1.5.dp, Color(0xFF00E5FF), RoundedCornerShape(16.dp))
+                .clickable { onOpenEditLayout() }
+                .padding(horizontal = 10.dp, vertical = 4.dp)
+        ) {
+            Text(
+                text = "✏️ EDIT LAYOUT",
+                color = Color(0xFF00E5FF),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        // 4. 🎯 'GYRO' Toggle Chip
+        val gyroBg = if (isGyroActive) Color(0xFF00E5FF) else Color(0x22FFFFFF)
+        val gyroTextColor = if (isGyroActive) Color.Black else Color.White
+        val gyroBorderColor = if (isGyroActive) Color(0xFF00E5FF) else Color(0x33FFFFFF)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .clip(RoundedCornerShape(16.dp))
+                .background(gyroBg)
+                .border(1.dp, gyroBorderColor, RoundedCornerShape(16.dp))
+                .clickable { onToggleGyro() }
+                .padding(horizontal = 10.dp, vertical = 4.dp)
+        ) {
+            Text(
+                text = if (isGyroActive) "🎯 GYRO ON" else "🎯 GYRO",
+                color = gyroTextColor,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
             )
         }
     }
@@ -384,3 +531,4 @@ private fun Modifier.alignCenter(
 ): Modifier = this
     .offset(x = centerX - width / 2, y = centerY - height / 2)
     .size(width, height)
+``

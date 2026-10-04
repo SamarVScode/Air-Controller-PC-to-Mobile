@@ -1,3 +1,9 @@
+/**
+ * @aegis-contract
+ * @claim Core Host Activity with ProfileManager and Layout Editor Integration
+ * @true Instantiates ProfileManager, manages isEditingLayout state, and toggles between HUD and Editor
+ * @false Permits unhandled lifecycle leaks or broken pairing transitions
+ */
 package com.gamepad.controller
 
 import android.content.Context
@@ -12,7 +18,6 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,7 +31,10 @@ import com.gamepad.controller.haptics.HapticsManager
 import com.gamepad.controller.input.InputStateHolder
 import com.gamepad.controller.input.LookAccumulator
 import com.gamepad.controller.network.UdpSenderThread
+import com.gamepad.controller.profile.ProfileManager
 import com.gamepad.controller.ui.GamepadHudScreen
+import com.gamepad.controller.ui.editor.LayoutEditorScreen
+import com.gamepad.controller.ui.pairing.PairingScreen
 
 /**
  * MainActivity: Core host activity for Phone-as-Gamepad.
@@ -37,6 +45,7 @@ import com.gamepad.controller.ui.GamepadHudScreen
  * 3. Unbuffered touch dispatch (requestUnbufferedDispatch) for minimum input latency
  * 4. Wi-Fi Low-Latency Lock (WIFI_MODE_FULL_LOW_LATENCY)
  * 5. Lifecycle-aware input safety (Neutralize on pause, stop sender)
+ * 6. Profile manager and dynamic layout editor integration
  */
 class MainActivity : ComponentActivity() {
 
@@ -44,6 +53,7 @@ class MainActivity : ComponentActivity() {
     private val hapticsManager by lazy { HapticsManager(this) }
     private val inputStateHolder = InputStateHolder()
     private val lookAccumulator = LookAccumulator()
+    private val profileManager by lazy { ProfileManager(this) }
     private var senderThread: UdpSenderThread? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,6 +75,7 @@ class MainActivity : ComponentActivity() {
                     lookAccumulator = lookAccumulator,
                     hapticsManager = hapticsManager,
                     senderThread = senderThread,
+                    profileManager = profileManager,
                     onStartSender = { host, port, session, key ->
                         startSender(host, port, session, key)
                     },
@@ -201,21 +212,32 @@ fun GamepadApp(
     lookAccumulator: LookAccumulator,
     hapticsManager: HapticsManager,
     senderThread: UdpSenderThread?,
+    profileManager: ProfileManager,
     onStartSender: (String, Int, Long, ByteArray) -> Unit,
     onStopSender: () -> Unit
 ) {
     var showPairingModal by remember { mutableStateOf(false) }
+    var isEditingLayout by remember { mutableStateOf(false) }
 
-    GamepadHudScreen(
-        inputStateHolder = inputStateHolder,
-        lookAccumulator = lookAccumulator,
-        hapticsManager = hapticsManager,
-        senderThread = senderThread,
-        onOpenPairing = { showPairingModal = true }
-    )
+    if (isEditingLayout) {
+        LayoutEditorScreen(
+            profileManager = profileManager,
+            onExitEditor = { isEditingLayout = false }
+        )
+    } else {
+        GamepadHudScreen(
+            inputStateHolder = inputStateHolder,
+            lookAccumulator = lookAccumulator,
+            hapticsManager = hapticsManager,
+            senderThread = senderThread,
+            profileManager = profileManager,
+            onOpenEditLayout = { isEditingLayout = true },
+            onOpenPairing = { showPairingModal = true }
+        )
+    }
 
     if (showPairingModal) {
-        com.gamepad.controller.ui.pairing.PairingScreen(
+        PairingScreen(
             onDismiss = { showPairingModal = false },
             onPairingSuccess = { host, port, session, key ->
                 onStartSender(host, port, session, key)
@@ -224,3 +246,4 @@ fun GamepadApp(
         )
     }
 }
+``

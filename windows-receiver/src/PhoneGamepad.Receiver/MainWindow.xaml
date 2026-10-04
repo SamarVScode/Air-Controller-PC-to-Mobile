@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Phone-as-Gamepad Windows 11 Receiver"
-        Height="550" Width="800"
+        Height="660" Width="860"
         Background="#0f172a" Foreground="#f8fafc"
         FontFamily="Segoe UI"
         WindowStartupLocation="CenterScreen">
@@ -15,27 +15,27 @@
         </Grid.RowDefinitions>
 
         <!-- Anti-Cheat Notice Banner -->
-        <Border Grid.Row="0" Background="#334155" CornerRadius="8" Padding="12" Margin="0,0,0,16">
+        <Border Grid.Row="0" Background="#1e293b" BorderBrush="#334155" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,16">
             <StackPanel Orientation="Vertical">
-                <TextBlock Text="⚠ FAIR PLAY &amp; ANTI-CHEAT FIRST-RUN NOTICE" FontWeight="Bold" Foreground="#38bdf8"/>
+                <TextBlock Text="⚠ FAIR PLAY &amp; ANTI-CHEAT FIRST-RUN NOTICE" FontWeight="Bold" Foreground="#38bdf8" FontSize="12"/>
                 <TextBlock Text="This receiver injects hardware scan codes. Verify your target game's anti-cheat policy before using online. Test only in offline practice ranges."
-                           FontSize="12" Foreground="#cbd5e1" TextWrapping="Wrap"/>
+                           FontSize="11" Foreground="#cbd5e1" TextWrapping="Wrap" Margin="0,4,0,0"/>
             </StackPanel>
         </Border>
 
         <!-- Armed Switch & Controls -->
-        <Border Grid.Row="1" Background="#1e293b" CornerRadius="8" Padding="16" Margin="0,0,0,16">
+        <Border Grid.Row="1" Background="#1e293b" BorderBrush="#334155" BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,0,16">
             <DockPanel LastChildFill="False">
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
                     <Button x:Name="BtnArmedToggle" Content="ARM RECEIVER" Width="140" Height="40"
-                            Background="#dc2626" Foreground="White" FontWeight="Bold" Click="BtnArmedToggle_Click"/>
-                    <TextBlock x:Name="TxtArmedStatus" Text="DISARMED" VerticalAlignment="Center" Margin="16,0,0,0" FontWeight="SemiBold" Foreground="#94a3b8"/>
+                            Background="#dc2626" Foreground="White" FontWeight="Bold" FontSize="13" Cursor="Hand" Click="BtnArmedToggle_Click"/>
+                    <TextBlock x:Name="TxtArmedStatus" Text="DISARMED" VerticalAlignment="Center" Margin="16,0,0,0" FontWeight="SemiBold" Foreground="#94a3b8" FontSize="13"/>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
-                    <TextBlock Text="Target Game:" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#cbd5e1"/>
-                    <ComboBox x:Name="CmbProcessList" Width="200" Height="32" SelectionChanged="CmbProcessList_SelectionChanged"/>
-                    <Button x:Name="BtnRefreshProcesses" Content="⟳" Width="32" Height="32" Margin="8,0,0,0" Click="BtnRefreshProcesses_Click"/>
+                    <TextBlock Text="Target Game:" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#cbd5e1" FontSize="12"/>
+                    <ComboBox x:Name="CmbProcessList" Width="220" Height="34" SelectionChanged="CmbProcessList_SelectionChanged"/>
+                    <Button x:Name="BtnRefreshProcesses" Content="⟳" Width="34" Height="34" Margin="8,0,0,0" Background="#334155" Foreground="White" FontSize="14" Cursor="Hand" Click="BtnRefreshProcesses_Click"/>
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -48,30 +48,69 @@
             </Grid.ColumnDefinitions>
 
             <!-- Telemetry Card -->
-            <Border Grid.Column="0" Background="#1e293b" CornerRadius="8" Padding="16" Margin="0,0,8,0">
-                <StackPanel>
-                    <TextBlock Text="Connection Telemetry" FontWeight="Bold" Foreground="#38bdf8" Margin="0,0,0,12"/>
-                    <TextBlock x:Name="TxtSessionId" Text="Session ID: None" Margin="0,0,0,6" Foreground="#cbd5e1"/>
-                    <TextBlock x:Name="TxtClientEndpoint" Text="Client: Not connected" Margin="0,0,0,6" Foreground="#cbd5e1"/>
-                    <TextBlock x:Name="TxtPacketCount" Text="Total Packets: 0" Margin="0,0,0,6" Foreground="#cbd5e1"/>
-                    <TextBlock x:Name="TxtFocusState" Text="Target Focus: Not In Focus" Margin="0,0,0,6" Foreground="#f87171"/>
-                    <TextBlock x:Name="TxtKillSwitchHint" Text="Global Kill-Switch: Ctrl+Alt+F12" Margin="0,12,0,0" Foreground="#64748b" FontSize="11"/>
-                </StackPanel>
+            <Border Grid.Column="0" Background="#1e293b" BorderBrush="#334155" BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,8,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="Connection Telemetry (120 Hz)" FontWeight="Bold" Foreground="#38bdf8" Margin="0,0,0,14" FontSize="14"/>
+
+                    <StackPanel Grid.Row="1" VerticalAlignment="Top">
+                        <TextBlock x:Name="TxtPacketCount" Text="Total Packets: 0" Margin="0,0,0,10" Foreground="#f8fafc" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="TxtSessionId" Text="Session ID: None" Margin="0,0,0,10" Foreground="#cbd5e1" FontFamily="Consolas" FontSize="12"/>
+                        <TextBlock x:Name="TxtClientEndpoint" Text="Client IP: Not connected" Margin="0,0,0,10" Foreground="#cbd5e1" FontSize="12"/>
+                        <TextBlock x:Name="TxtFocusState" Text="Target Focus: Not In Focus" Margin="0,0,0,10" Foreground="#f87171" FontWeight="SemiBold" FontSize="12"/>
+                    </StackPanel>
+
+                    <!-- Emergency Kill-Switch Banner -->
+                    <Border Grid.Row="2" Background="#0f172a" BorderBrush="#ef4444" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,16,0,0">
+                        <StackPanel Orientation="Vertical">
+                            <TextBlock Text="EMERGENCY OVERRIDE" FontWeight="Bold" Foreground="#ef4444" FontSize="10"/>
+                            <TextBlock x:Name="TxtKillSwitchHint" Text="Global Emergency Kill-Switch: Ctrl+Alt+F12" Foreground="#fca5a5" FontWeight="SemiBold" FontSize="12" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
             </Border>
 
-            <!-- Pairing / Key Card -->
-            <Border Grid.Column="1" Background="#1e293b" CornerRadius="8" Padding="16" Margin="8,0,0,0">
-                <StackPanel>
-                    <TextBlock Text="LAN Pairing Security" FontWeight="Bold" Foreground="#38bdf8" Margin="0,0,0,12"/>
-                    <TextBlock Text="UDP Port: 47789" Margin="0,0,0,6" Foreground="#cbd5e1"/>
-                    <TextBlock x:Name="TxtPresharedKey" Text="PSK: Protected by DPAPI" Margin="0,0,0,6" Foreground="#cbd5e1"/>
-                    <Button x:Name="BtnNeutralizeAll" Content="Emergency Neutralize (Release All)" Margin="0,16,0,0" Height="36"
-                            Background="#b91c1c" Foreground="White" Click="BtnNeutralizeAll_Click"/>
-                </StackPanel>
+            <!-- Pairing / QR Code Card -->
+            <Border Grid.Column="1" Background="#1e293b" BorderBrush="#334155" BorderThickness="1" CornerRadius="8" Padding="16" Margin="8,0,0,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="LAN Pairing Security" FontWeight="Bold" Foreground="#38bdf8" Margin="0,0,0,8" HorizontalAlignment="Center" FontSize="14"/>
+
+                        <!-- Visual Step Hint -->
+                        <Border Background="#0f172a" BorderBrush="#38bdf8" BorderThickness="1" CornerRadius="6" Padding="8,5" Margin="0,0,0,10" HorizontalAlignment="Center">
+                            <TextBlock Text="1. Click Arm Receiver  ➔  2. Scan QR code on Android phone"
+                                       FontSize="11" FontWeight="SemiBold" Foreground="#38bdf8" HorizontalAlignment="Center"/>
+                        </Border>
+
+                        <!-- QR Code Image (164x164 White Rounded Box) -->
+                        <Border Background="White" CornerRadius="8" Padding="6" Width="164" Height="164" HorizontalAlignment="Center" Margin="0,0,0,8">
+                            <Image x:Name="ImgQrCode" Width="152" Height="152" Stretch="Uniform" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+                        </Border>
+
+                        <!-- Dynamic Local IP & UDP Port -->
+                        <TextBlock x:Name="TxtLocalIp" Text="IP: Detecting..." FontWeight="Bold" Foreground="#f8fafc" HorizontalAlignment="Center" Margin="0,0,0,2" FontSize="12"/>
+                        <TextBlock Text="UDP Port: 47789" Foreground="#94a3b8" HorizontalAlignment="Center" Margin="0,0,0,8" FontSize="11"/>
+
+                        <!-- PSK Hex Key and Copy Button -->
+                        <DockPanel HorizontalAlignment="Center" Margin="0,0,0,6">
+                            <TextBlock x:Name="TxtPresharedKey" Text="Key: Loading..." MaxWidth="160" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Foreground="#cbd5e1" FontFamily="Consolas" FontSize="11"/>
+                            <Button x:Name="BtnCopyKey" Content="📋 Copy" Margin="8,0,0,0" Padding="8,3" Click="BtnCopyKey_Click" Background="#334155" Foreground="White" FontSize="11" Cursor="Hand"/>
+                        </DockPanel>
+
+                        <!-- Emergency Neutralize Button -->
+                        <Button x:Name="BtnNeutralizeAll" Content="Emergency Neutralize (Release All)" Margin="0,4,0,0" Height="30" Width="220"
+                                Background="#b91c1c" Foreground="White" FontWeight="SemiBold" Click="BtnNeutralizeAll_Click" FontSize="11" Cursor="Hand"/>
+                    </StackPanel>
+                </ScrollViewer>
             </Border>
         </Grid>
 
         <!-- Footer -->
-        <TextBlock Grid.Row="3" Text="PhoneGamepad Windows 11 Receiver v1.0.0 — Ready" Foreground="#64748b" Margin="0,12,0,0"/>
+        <TextBlock Grid.Row="3" Text="PhoneGamepad Windows 11 Receiver v1.0.0 — Ready" Foreground="#64748b" Margin="0,12,0,0" FontSize="11"/>
     </Grid>
 </Window>

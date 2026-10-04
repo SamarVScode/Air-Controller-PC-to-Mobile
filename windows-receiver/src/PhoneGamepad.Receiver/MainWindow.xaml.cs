@@ -1,12 +1,19 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
+using System.IO;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using PhoneGamepad.Receiver.Engine;
 using PhoneGamepad.Receiver.Network;
 using PhoneGamepad.Receiver.Protocol;
 using PhoneGamepad.Receiver.Safety;
 using PhoneGamepad.Receiver.Security;
 using PhoneGamepad.Receiver.Sinks;
+using QRCoder;
 
 namespace PhoneGamepad.Receiver;
 
@@ -19,6 +26,7 @@ public partial class MainWindow : Window
     private readonly KeyStateDiffEngine _keyDiffEngine;
     private readonly UdpListenerService _udpListener;
     private readonly byte[] _key;
+    private readonly DispatcherTimer _telemetryTimer;
 
     private const int HotkeyId = 9001;
     private const uint ModAlt = 0x0001;
@@ -48,6 +56,12 @@ public partial class MainWindow : Window
         _triGuard.ArmedChanged += OnArmedChanged;
         _triGuard.FocusChanged += OnFocusChanged;
 
+        _telemetryTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(100)
+        };
+        _telemetryTimer.Tick += OnTelemetryTick;
+
         Loaded += MainWindow_Loaded;
         Closing += MainWindow_Closing;
     }
@@ -61,7 +75,100 @@ public partial class MainWindow : Window
         RegisterHotKey(helper.Handle, HotkeyId, ModControl | ModAlt, VkF12);
 
         RefreshProcessList();
+        InitializePairingQrCode();
         _udpListener.Start();
+        _telemetryTimer.Start();
+    }
+
+    private void InitializePairingQrCode()
+    {
+        try
+        {
+            var ips = GetLocalIPv4Addresses();
+            string primaryIp = ips.FirstOrDefault() ?? "127.0.0.1";
+            string hexKey = Convert.ToHexString(_key).ToLowerInvariant();
+
+            TxtLocalIp.Text = $"IP: {primaryIp}";
+            TxtPresharedKey.Text = $"Key: {hexKey[..8]}...{hexKey[^8..]}";
+            TxtPresharedKey.ToolTip = hexKey;
+
+            var payloadObj = new
+            {
+                ips = ips,
+                port = ProtocolConstants.DefaultPort,
+                key = hexKey,
+                name = Environment.MachineName
+            };
+            string json = JsonSerializer.Serialize(payloadObj);
+
+            using var qrGenerator = new QRCodeGenerator();
+            using var qrCodeData = qrGenerator.CreateQrCode(json, QRCodeGenerator.ECCLevel.Q);
+            var qrCode = new PngByteQRCode(qrCodeData);
+            byte[] qrBytes = qrCode.GetGraphic(10);
+
+            using var ms = new MemoryStream(qrBytes);
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.StreamSource = ms;
+            bitmap.EndInit();
+            bitmap.Freeze();
+
+            ImgQrCode.Source = bitmap;
+        }
+        catch (Exception ex)
+        {
+            TxtLocalIp.Text = "QR Error: " + ex.Message;
+        }
+    }
+
+    private static List<string> GetLocalIPv4Addresses()
+    {
+        var list = new List<string>();
+        try
+        {
+            foreach (var netInterface in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (netInterface.OperationalStatus != OperationalStatus.Up ||
+                    netInterface.NetworkInterfaceType == NetworkInterfaceType.Loopback)
+                    continue;
+
+                var ipProps = netInterface.GetIPProperties();
+                foreach (var addr in ipProps.UnicastAddresses)
+                {
+                    if (addr.Address.AddressFamily == AddressFamily.InterNetwork)
+                    {
+                        string ipStr = addr.Address.ToString();
+                        if (!ipStr.StartsWith("169.254.") && !ipStr.StartsWith("127."))
+                        {
+                            list.Add(ipStr);
+                        }
+                    }
+                }
+            }
+        }
+        catch { }
+        if (list.Count == 0) list.Add("127.0.0.1");
+        return list;
+    }
+
+    private void BtnCopyKey_Click(object sender, RoutedEventArgs e)
+    {
+        Clipboard.SetText(Convert.ToHexString(_key).ToLowerInvariant());
+        BtnCopyKey.Content = "Copied!";
+    }
+
+    private void OnTelemetryTick(object? sender, EventArgs e)
+    {
+        TxtSessionId.Text = _udpListener.ActiveSessionId.HasValue
+            ? $"Session ID: 0x{_udpListener.ActiveSessionId.Value:X8}"
+            : "Session ID: None";
+
+        TxtClientEndpoint.Text = _udpListener.ActiveClientEndpoint != null
+            ? $"Client: {_udpListener.ActiveClientEndpoint}"
+            : "Client: Not connected";
+
+        TxtPacketCount.Text = $"Total Packets: {_udpListener.PacketCount}";
     }
 
     private IntPtr HwndHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -151,6 +258,7 @@ public partial class MainWindow : Window
 
     private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
+        _telemetryTimer.Stop();
         var helper = new WindowInteropHelper(this);
         UnregisterHotKey(helper.Handle, HotkeyId);
         _udpListener.Dispose();
