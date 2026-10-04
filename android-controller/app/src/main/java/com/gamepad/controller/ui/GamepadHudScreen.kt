@@ -379,6 +379,40 @@ fun GamepadHudScreen(
                 .alpha(bagCfg.opacity)
         )
 
+        // 20. Gyroscope Toggle Chip (gyro): default x:50%, y:90%, width:15%, height:4.8%
+        val gyroCfg = getControl("gyro", 50.0f, 90.0f, 15.0f, 4.8f, 0.7f)
+        val gyroWidth = screenWidth * (gyroCfg.width / 100f)
+        val gyroHeight = screenHeight * (gyroCfg.height / 100f)
+        val gyroActiveBg = if (isGyroActive) Color(0xFF00E5FF) else Color(0x3310141D)
+        val gyroTextCol = if (isGyroActive) Color.Black else Color.White
+        val gyroBorderCol = if (isGyroActive) Color(0xFF00E5FF) else Color(0x66FFFFFF)
+
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .alignCenter(
+                    screenWidth * (gyroCfg.x / 100f),
+                    screenHeight * (gyroCfg.y / 100f),
+                    gyroWidth,
+                    gyroHeight
+                )
+                .alpha(gyroCfg.opacity)
+                .clip(RoundedCornerShape(8.dp))
+                .background(gyroActiveBg)
+                .border(1.dp, gyroBorderCol, RoundedCornerShape(8.dp))
+                .clickable {
+                    hapticsManager.performTick()
+                    isGyroActive = !isGyroActive
+                }
+        ) {
+            Text(
+                text = if (isGyroActive) "🎯 GYRO ON" else "🎯 GYRO",
+                color = gyroTextCol,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
         // Top Status Bar: Connection Badge, Pair Pill, Edit Layout Pill, and Gyro Chip
         TopStatusBar(
             connectionStatus = connectionState,
@@ -531,4 +565,3 @@ private fun Modifier.alignCenter(
 ): Modifier = this
     .offset(x = centerX - width / 2, y = centerY - height / 2)
     .size(width, height)
-``

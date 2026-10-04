@@ -1,4 +1,4 @@
-﻿name: Build and Release Air Controller
+name: Build and Release Air Controller
 
 on:
   push:
@@ -62,6 +62,7 @@ jobs:
       - name: Build Debug APK
         working-directory: android-controller
         run: |
+          set -e -o pipefail
           gradle wrapper --gradle-version 8.10.2
           ./gradlew :app:assembleDebug --stacktrace --no-daemon 2>&1 | tee build.log || {
             echo "### Android Build Failure" >> $GITHUB_STEP_SUMMARY
