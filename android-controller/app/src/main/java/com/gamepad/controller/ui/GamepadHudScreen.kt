@@ -401,7 +401,7 @@ fun GamepadHudScreen(
                 .background(gyroActiveBg)
                 .border(1.dp, gyroBorderCol, RoundedCornerShape(8.dp))
                 .clickable {
-                    hapticsManager.performTick()
+                    hapticsManager.triggerClick()
                     isGyroActive = !isGyroActive
                 }
         ) {

@@ -32,4 +32,8 @@ class HapticsManager(context: Context) {
         } catch (_: Exception) {
         }
     }
+
+    fun performTick() {
+        triggerClick()
+    }
 }
