@@ -1,4 +1,4 @@
-﻿plugins {
+plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -7,12 +7,12 @@
 
 android {
     namespace = "com.gamepad.controller"
-    compileSdk = 35
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.gamepad.controller"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0.0"
 
