@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.gamepad.controller.haptics.HapticsManager
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -96,8 +97,7 @@ fun VirtualJoystick(
                                 }
                                 change.consume()
                             }
-                            androidx.compose.ui.input.pointer.PointerEventType.Release,
-                            androidx.compose.ui.input.pointer.PointerEventType.Cancel -> {
+                            androidx.compose.ui.input.pointer.PointerEventType.Release -> {
                                 val change = event.changes.firstOrNull { it.id == activePointerId }
                                 if (change != null) {
                                     activePointerId = null

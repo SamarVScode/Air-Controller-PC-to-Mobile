@@ -1,4 +1,4 @@
-﻿package com.gamepad.controller.input
+package com.gamepad.controller.input
 
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -57,6 +57,14 @@ class LookAccumulator {
             lookX.addAndGet(intCountsX)
             lookY.addAndGet(intCountsY)
         }
+    }
+
+
+    fun getCumulativeX(): Int = lookX.get()
+    fun getCumulativeY(): Int = lookY.get()
+
+    fun addDeltas(dx: Float, dy: Float) {
+        addTouchDelta(dx, dy, 1.0f, false, 1.0f)
     }
 
     fun getSnapshot(): LookSnapshot {

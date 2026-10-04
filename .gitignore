@@ -39,3 +39,4 @@ venv/
 # Antigravity / internal temp
 .agents/
 .gemini/
+.aegis/

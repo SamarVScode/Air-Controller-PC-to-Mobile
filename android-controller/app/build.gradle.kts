@@ -69,6 +69,7 @@ dependencies {
 
     // Google Play Services Code Scanner (Zero camera permissions required)
     implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
+    implementation("com.google.mlkit:barcode-scanning:17.3.0")
 
     // Kotlinx Serialization JSON
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")

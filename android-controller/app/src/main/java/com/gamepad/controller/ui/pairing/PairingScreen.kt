@@ -37,8 +37,8 @@ import androidx.compose.ui.window.Dialog
 import com.gamepad.controller.data.PairingQrPayload
 import com.gamepad.controller.network.HandshakeManager
 import com.google.mlkit.vision.barcode.common.Barcode
-import com.google.android.gms.code.scanner.GmsBarcodeScannerOptions
-import com.google.android.gms.code.scanner.GmsBarcodeScanning
+import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -116,7 +116,7 @@ fun PairingScreen(
 
                         val scanner = GmsBarcodeScanning.getClient(context, options)
                         scanner.startScan()
-                            .addOnSuccessListener { barcode ->
+                            .addOnSuccessListener { barcode: Barcode ->
                                 val rawValue = barcode.rawValue
                                 if (!rawValue.isNullOrEmpty()) {
                                     try {
@@ -128,7 +128,7 @@ fun PairingScreen(
                                     }
                                 }
                             }
-                            .addOnFailureListener { e ->
+                            .addOnFailureListener { e: Exception ->
                                 statusText = "Scan failed: ${e.message}"
                             }
                     },

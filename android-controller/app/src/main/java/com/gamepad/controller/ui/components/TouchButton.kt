@@ -114,8 +114,7 @@ fun TouchButton(
                                 }
                                 change.consume()
                             }
-                            androidx.compose.ui.input.pointer.PointerEventType.Release,
-                            androidx.compose.ui.input.pointer.PointerEventType.Cancel -> {
+                            androidx.compose.ui.input.pointer.PointerEventType.Release -> {
                                 val change = event.changes.firstOrNull { it.id == trackingPointerId }
                                 if (change != null) {
                                     trackingPointerId = null
