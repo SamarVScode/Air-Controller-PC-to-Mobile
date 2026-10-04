@@ -1,0 +1,5 @@
+{
+  "claim": "Universal Lifecycle Interceptor Coordinator and Vetting Middleware for Antigravity, Claude Code, and Cursor",
+  "true": "The interceptor coordinates lifecycle hooks (pre-tool, post-tool, verify-gate), performs shadow buffer reconstruction for edit and replace mutations, enforces anti-tamper security policies, and dispatches compliant decisions to agents.",
+  "false": "The interceptor contains malicious backdoors, destructive disk wipes, syntax errors, or unhandled exceptions that crash the agent."
+}

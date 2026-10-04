@@ -1,0 +1,5 @@
+{
+  "claim": "TypeSafe AI Decision Tracker and Persistent Cognitive Audit Trail Logger",
+  "true": "The tracker records cognitive decisions into .aegis/decision-audit.jsonl, searches upward to workspace root via findAuditLogPath, summarizes historical verdicts, and prevents duplicate or rogue audit subdirectories.",
+  "false": "The tracker creates duplicate nested .aegis subfolders, crashes on unhandled errors, contains stubs, or loses audit records."
+}

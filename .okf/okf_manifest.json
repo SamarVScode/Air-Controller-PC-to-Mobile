@@ -1,0 +1,122 @@
+{
+  "spec_version": "1.0.0",
+  "framework": "Google Open Knowledge Framework (OKF)",
+  "domain": "agentic-orchestration",
+  "title": "Agy Agentic Development System OKF Knowledge Graph",
+  "description": "Standardized, machine-readable OKF Knowledge Nodes for the 4-Tier Agentic Development System.",
+  "nodes": [
+    {
+      "id": "node:memory",
+      "path": ".okf/nodes/memory.md",
+      "category": "domain",
+      "tags": [
+        "memory",
+        "domain",
+        "product",
+        "vision",
+        "scope"
+      ],
+      "relations": [
+        "node:architecture",
+        "node:rules",
+        "node:timeline"
+      ]
+    },
+    {
+      "id": "node:architecture",
+      "path": ".okf/nodes/architecture.md",
+      "category": "architecture",
+      "tags": [
+        "architecture",
+        "tiers",
+        "stack",
+        "flow",
+        "hooks",
+        "modules"
+      ],
+      "relations": [
+        "node:memory",
+        "node:rules"
+      ]
+    },
+    {
+      "id": "node:rules",
+      "path": ".okf/nodes/rules.md",
+      "category": "guidelines",
+      "tags": [
+        "rules",
+        "guidelines",
+        "boundaries",
+        "safety",
+        "tdd",
+        "oklch"
+      ],
+      "relations": [
+        "node:architecture"
+      ]
+    },
+    {
+      "id": "node:timeline",
+      "path": ".okf/nodes/timeline.md",
+      "category": "history",
+      "tags": [
+        "timeline",
+        "history",
+        "milestones",
+        "changelog",
+        "audit"
+      ],
+      "relations": [
+        "node:memory"
+      ]
+    },
+    {
+      "id": "node:schemas",
+      "path": ".okf/nodes/schemas.md",
+      "category": "schemas",
+      "tags": [
+        "schemas",
+        "database",
+        "sql",
+        "models",
+        "api",
+        "contracts"
+      ],
+      "relations": [
+        "node:architecture"
+      ]
+    },
+    {
+      "id": "node:specs",
+      "path": ".okf/nodes/specs.md",
+      "category": "specs",
+      "tags": [
+        "specs",
+        "requirements",
+        "acceptance-criteria",
+        "features"
+      ],
+      "relations": [
+        "node:memory",
+        "node:architecture"
+      ]
+    },
+    {
+      "id": "node:integrations",
+      "path": ".okf/nodes/integrations.md",
+      "category": "architecture",
+      "tags": [
+        "integrations",
+        "env",
+        "apis",
+        "third-party",
+        "deployment",
+        "cloud"
+      ],
+      "relations": [
+        "node:architecture"
+      ]
+    }
+  ]
+}
+

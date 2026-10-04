@@ -1,0 +1,5 @@
+{
+  "claim": "Cycle Detector and Thrashing Circuit Breaker with Multi-Pattern Loop Detection",
+  "true": "The module tracks rolling action history, calculates structural diff variance across edits, enforces supervisor polling limits, and detects consecutive identical actions, 2-step oscillating loops, and 3-step triangular loops for both file mutations and command tools.",
+  "false": "The module ignores command tool repetitions in triangular loops, fails to persist session state, falsely flags non-thrashing workflows, or contains syntax errors."
+}

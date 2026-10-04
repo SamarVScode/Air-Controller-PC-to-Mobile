@@ -1,0 +1,5 @@
+{
+  "claim": "TypeSafe AI Acceptance Gatekeeper and Deterministic Multi-Stage Test Verification Pipeline",
+  "true": "The module coordinates safe child process execution, audits agent claims against reality with the Lie Detector, executes multi-ecosystem test runners, kills child process trees on Windows during timeout or buffer limits, and enforces Jev completion gates.",
+  "false": "The module leaks orphaned process trees on Windows, allows destructive commands, bypasses verification contracts, contains stubs, or permits fabricated claims."
+}

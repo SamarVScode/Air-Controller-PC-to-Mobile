@@ -1,0 +1,5 @@
+{
+  "claim": "TypeSafe AI Native System One Client and Fail-Closed Decision Gateway",
+  "true": "The client executes HTTP requests to TypeSafe System One, detects destructive operations, enforces fail-closed authorization policies, immediately throws on non-retryable 4xx client errors, and bounds backoff retry attempts.",
+  "false": "The client enters infinite or unbounded retry loops on 4xx errors, fails open on destructive hazards, contains dummy stubs, or leaks credentials."
+}

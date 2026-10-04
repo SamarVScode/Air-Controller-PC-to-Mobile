@@ -1,0 +1,2061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Phone-as-Gamepad: Interactive HUD & Receiver Simulator</title>
+  <style>
+    /* OKLCH Color Palette & Impeccable Design System */
+    :root {
+      --bg-base: oklch(0.14 0.015 250);
+      --bg-surface: oklch(0.18 0.02 250);
+      --bg-surface-elevated: oklch(0.23 0.025 250);
+      --bg-surface-highlight: oklch(0.28 0.03 250);
+      --border-subtle: oklch(0.26 0.025 250);
+      --border-prominent: oklch(0.36 0.035 250);
+
+      --ink-primary: oklch(0.96 0.005 250);
+      --ink-secondary: oklch(0.82 0.015 250);
+      --ink-muted: oklch(0.68 0.02 250);
+
+      --accent-emerald: oklch(0.78 0.16 150);
+      --accent-emerald-dim: oklch(0.32 0.08 150);
+      --accent-cyan: oklch(0.76 0.14 210);
+      --accent-cyan-dim: oklch(0.30 0.07 210);
+      --accent-amber: oklch(0.78 0.16 75);
+      --accent-amber-dim: oklch(0.32 0.08 75);
+      --accent-danger: oklch(0.65 0.22 25);
+      --accent-danger-dim: oklch(0.28 0.11 25);
+
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-full: 9999px;
+
+      --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--ink-primary);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      line-height: 1.5;
+    }
+
+    /* Top Navigation Bar */
+    header {
+      background-color: var(--bg-surface);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-sm);
+      background-color: var(--accent-emerald-dim);
+      border: 1px solid var(--accent-emerald);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent-emerald);
+      font-weight: 700;
+      font-size: 16px;
+    }
+
+    .brand-title {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--ink-primary);
+    }
+
+    .brand-badge {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      background-color: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      color: var(--ink-muted);
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 8px;
+      background-color: var(--bg-base);
+      padding: 4px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--ink-muted);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.15s var(--ease-expo);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tab-btn:hover {
+      color: var(--ink-primary);
+      background-color: var(--bg-surface);
+    }
+
+    .tab-btn.active {
+      color: var(--ink-primary);
+      background-color: var(--bg-surface-highlight);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+
+    .header-status {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 13px;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--accent-emerald);
+      box-shadow: 0 0 8px var(--accent-emerald);
+    }
+
+    .dot.armed {
+      background-color: var(--accent-emerald);
+      box-shadow: 0 0 8px var(--accent-emerald);
+    }
+
+    .dot.disarmed {
+      background-color: var(--accent-danger);
+      box-shadow: 0 0 8px var(--accent-danger);
+    }
+
+    /* Main Container */
+    main {
+      flex: 1;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      max-width: 1600px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .tab-content {
+      width: 100%;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .tab-content.active {
+      display: flex;
+    }
+
+    /* Phone Outer Frame */
+    .phone-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 1020px;
+      aspect-ratio: 19.5 / 9;
+      background-color: #050608;
+      border-radius: 36px;
+      padding: 12px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8), 0 0 0 2px var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .phone-bezel {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background-color: #0b0d11;
+      border-radius: 26px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid oklch(0.22 0.02 250);
+    }
+
+    /* Notch & Camera Pill */
+    .phone-notch {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background-color: #030406;
+      border: 1px solid oklch(0.20 0.015 250);
+      z-index: 50;
+      pointer-events: none;
+    }
+
+    /* Phone HUD Canvas */
+    .phone-hud {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background-color: oklch(0.12 0.015 250);
+      background-image: 
+        radial-gradient(oklch(0.18 0.02 250) 1px, transparent 1px),
+        linear-gradient(to right, transparent 42%, oklch(0.15 0.02 250) 42%, transparent 42.2%);
+      background-size: 24px 24px, 100% 100%;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    /* Top HUD Status Bar */
+    .hud-status-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 26px;
+      padding: 0 24px;
+      background: linear-gradient(180deg, rgba(0, 0, 0, 0.7) 0%, transparent 100%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--ink-secondary);
+      z-index: 40;
+      pointer-events: none;
+    }
+
+    .hud-stats-group {
+      display: flex;
+      gap: 14px;
+    }
+
+    .hud-stat-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .hud-stat-item span.val {
+      color: var(--accent-emerald);
+      font-weight: 600;
+    }
+
+    /* Look Zone Visual Indicator */
+    .look-zone-overlay {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 58%; /* 42% to 100% */
+      height: 100%;
+      pointer-events: auto;
+      z-index: 5;
+    }
+
+    .look-zone-hint {
+      position: absolute;
+      right: 20px;
+      bottom: 24px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: oklch(0.45 0.02 250);
+      pointer-events: none;
+      letter-spacing: 0.05em;
+    }
+
+    /* Virtual Horizon 3D Wireframe Simulation */
+    .viewport-horizon {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .crosshair {
+      width: 24px;
+      height: 24px;
+      position: relative;
+      opacity: 0.5;
+      transition: transform 0.05s linear;
+    }
+
+    .crosshair::before, .crosshair::after {
+      content: '';
+      position: absolute;
+      background-color: var(--accent-cyan);
+    }
+
+    .crosshair::before {
+      top: 11px;
+      left: 0;
+      width: 24px;
+      height: 2px;
+    }
+
+    .crosshair::after {
+      top: 0;
+      left: 11px;
+      width: 2px;
+      height: 24px;
+    }
+
+    .crosshair-dot {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background-color: var(--accent-emerald);
+    }
+
+    /* HUD Controls */
+    .hud-control {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      font-family: var(--font-sans);
+      font-weight: 600;
+      font-size: 12px;
+      color: var(--ink-primary);
+      background-color: oklch(0.20 0.025 250 / 0.85);
+      border: 1.5px solid oklch(0.38 0.04 250 / 0.8);
+      cursor: pointer;
+      z-index: 10;
+      transition: background-color 0.12s var(--ease-expo), border-color 0.12s var(--ease-expo), transform 0.1s var(--ease-expo);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+      touch-action: none;
+    }
+
+    .hud-control:active, .hud-control.active {
+      background-color: var(--accent-emerald-dim);
+      border-color: var(--accent-emerald);
+      color: #ffffff;
+      transform: translate(-50%, -50%) scale(0.95);
+      box-shadow: 0 0 12px var(--accent-emerald-dim);
+    }
+
+    .hud-control .control-label {
+      pointer-events: none;
+      text-align: center;
+      line-height: 1.1;
+    }
+
+    .hud-control .control-sub {
+      font-size: 9px;
+      font-family: var(--font-mono);
+      color: var(--ink-muted);
+      font-weight: 400;
+      display: block;
+    }
+
+    .hud-control.active .control-sub {
+      color: var(--ink-secondary);
+    }
+
+    /* Move Stick Specifics */
+    .hud-stick-base {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background-color: oklch(0.18 0.02 250 / 0.7);
+      border: 2px dashed oklch(0.35 0.03 250 / 0.7);
+      z-index: 10;
+      touch-action: none;
+    }
+
+    .hud-stick-thumb {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 44%;
+      height: 44%;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background-color: oklch(0.26 0.03 250 / 0.9);
+      border: 2px solid var(--accent-emerald);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent-emerald);
+      font-size: 11px;
+      font-weight: 700;
+      pointer-events: none;
+    }
+
+    .hud-stick-wasd {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      color: oklch(0.48 0.02 250);
+    }
+
+    .hud-stick-wasd .dir-w { position: absolute; top: 6px; }
+    .hud-stick-wasd .dir-s { position: absolute; bottom: 6px; }
+    .hud-stick-wasd .dir-a { position: absolute; left: 8px; }
+    .hud-stick-wasd .dir-d { position: absolute; right: 8px; }
+
+    .hud-stick-wasd .lit {
+      color: var(--accent-emerald);
+      text-shadow: 0 0 6px var(--accent-emerald);
+    }
+
+    /* Fire and Drag Indicator on Right Fire */
+    .hud-control.rfire {
+      border-color: var(--accent-amber);
+      background-color: oklch(0.24 0.035 75 / 0.85);
+    }
+
+    .hud-control.rfire.active {
+      border-color: var(--accent-amber);
+      background-color: var(--accent-amber-dim);
+      box-shadow: 0 0 14px var(--accent-amber-dim);
+    }
+
+    /* Chip Controls */
+    .hud-control.chip {
+      border-radius: var(--radius-sm);
+    }
+
+    /* Control Editor Selection Bounding Box */
+    .editor-selected {
+      outline: 2px solid var(--accent-cyan) !important;
+      outline-offset: 3px;
+    }
+
+    /* Bottom Inspector & Layout Editor Bar */
+    .editor-workspace {
+      width: 100%;
+      max-width: 1020px;
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .editor-workspace {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .editor-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .action-btn {
+      background-color: var(--bg-surface-elevated);
+      border: 1px solid var(--border-subtle);
+      color: var(--ink-primary);
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s var(--ease-expo);
+    }
+
+    .action-btn:hover {
+      background-color: var(--bg-surface-highlight);
+      border-color: var(--border-prominent);
+    }
+
+    .action-btn.primary {
+      background-color: var(--accent-emerald-dim);
+      border-color: var(--accent-emerald);
+      color: var(--ink-primary);
+    }
+
+    .action-btn.primary:hover {
+      background-color: oklch(0.40 0.10 150);
+    }
+
+    .action-btn.danger {
+      background-color: var(--accent-danger-dim);
+      border-color: var(--accent-danger);
+      color: var(--accent-danger);
+    }
+
+    .action-btn.danger:hover {
+      background-color: oklch(0.35 0.14 25);
+      color: var(--ink-primary);
+    }
+
+    /* Property Inspector Form */
+    .inspector-panel {
+      background-color: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .inspector-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--ink-primary);
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    label {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--ink-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    input, select, textarea {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      color: var(--ink-primary);
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-family: var(--font-sans);
+      outline: none;
+      transition: border-color 0.15s var(--ease-expo);
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    /* Windows Receiver Dashboard Layout */
+    .receiver-dashboard {
+      width: 100%;
+      max-width: 1120px;
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 950px) {
+      .receiver-dashboard {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .receiver-panel {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .panel-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--ink-primary);
+    }
+
+    /* Tri-Guard Visualizer */
+    .tri-guard-card {
+      background-color: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .guard-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+    }
+
+    .guard-name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--ink-secondary);
+    }
+
+    .guard-badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      background-color: var(--accent-emerald-dim);
+      color: var(--accent-emerald);
+      border: 1px solid var(--accent-emerald);
+    }
+
+    .guard-badge.tripped {
+      background-color: var(--accent-danger-dim);
+      color: var(--accent-danger);
+      border-color: var(--accent-danger);
+    }
+
+    /* Armed Toggle Big Button */
+    .armed-toggle-box {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .big-toggle-btn {
+      width: 100%;
+      padding: 14px;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      border-radius: var(--radius-md);
+      border: 2px solid;
+      cursor: pointer;
+      transition: all 0.2s var(--ease-expo);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .big-toggle-btn.armed {
+      background-color: var(--accent-emerald-dim);
+      border-color: var(--accent-emerald);
+      color: var(--ink-primary);
+      box-shadow: 0 0 16px rgba(46, 213, 115, 0.2);
+    }
+
+    .big-toggle-btn.disarmed {
+      background-color: var(--accent-danger-dim);
+      border-color: var(--accent-danger);
+      color: var(--accent-danger);
+    }
+
+    .kill-switch-btn {
+      width: 100%;
+      padding: 12px;
+      background-color: var(--accent-danger);
+      color: #ffffff;
+      font-weight: 700;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background-color 0.15s var(--ease-expo);
+    }
+
+    .kill-switch-btn:hover {
+      background-color: oklch(0.58 0.22 25);
+    }
+
+    /* Live Input Log Stream */
+    .log-container {
+      background-color: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      height: 380px;
+      overflow-y: auto;
+      padding: 12px;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .log-row {
+      line-height: 1.4;
+      display: flex;
+      gap: 8px;
+      word-break: break-all;
+    }
+
+    .log-ts {
+      color: var(--ink-muted);
+      flex-shrink: 0;
+    }
+
+    .log-type-kbm { color: var(--accent-cyan); }
+    .log-type-safety { color: var(--accent-amber); font-weight: 600; }
+    .log-type-kill { color: var(--accent-danger); font-weight: 700; }
+    .log-type-status { color: var(--accent-emerald); }
+
+    /* QR Code Card */
+    .qr-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      background-color: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 16px;
+    }
+
+    #qr-canvas {
+      width: 180px;
+      height: 180px;
+      background: #ffffff;
+      padding: 8px;
+      border-radius: var(--radius-sm);
+    }
+
+    .qr-details {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--ink-muted);
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    /* Modal Sheet for Export/Import */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background-color: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(2px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-dialog {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-prominent);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 680px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--ink-muted);
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    .modal-body textarea {
+      width: 100%;
+      height: 300px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      resize: vertical;
+    }
+
+    /* Interactive Live HUD indicators */
+    .live-keys-pill {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    .key-badge {
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-surface-elevated);
+      color: var(--ink-muted);
+    }
+
+    .key-badge.pressed {
+      background: var(--accent-emerald-dim);
+      color: var(--accent-emerald);
+      border: 1px solid var(--accent-emerald);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top App Navigation -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">GP</div>
+      <div>
+        <div class="brand-title">Phone-as-Gamepad Simulator</div>
+        <div style="font-size: 11px; color: var(--ink-muted);">PLAN.md Rev 4 Reference HUD & Wire Protocol</div>
+      </div>
+      <div class="brand-badge">UDP v1 @ 120Hz</div>
+    </div>
+
+    <!-- Mode Selector Tabs -->
+    <div class="nav-tabs">
+      <button class="tab-btn active" data-tab="tab-hud">
+        <span>🎮</span> HUD Simulator
+      </button>
+      <button class="tab-btn" data-tab="tab-editor">
+        <span>📐</span> Layout Editor
+      </button>
+      <button class="tab-btn" data-tab="tab-receiver">
+        <span>🖥️</span> Windows Receiver
+      </button>
+    </div>
+
+    <div class="header-status">
+      <div class="status-indicator">
+        <span class="dot armed" id="global-status-dot"></span>
+        <span id="global-status-text">ARMED (120 Hz)</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- TAB 1: INTERACTIVE HUD SIMULATOR -->
+    <section class="tab-content active" id="tab-hud">
+      <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 1020px; font-size: 13px;">
+        <span style="color: var(--ink-muted);">Touch / Click controls to test live input injection. Drag on the right 58% look zone or Right Fire to aim.</span>
+        <div class="live-keys-pill">
+          <span>Active Injected:</span>
+          <span class="key-badge" id="k-w">W</span>
+          <span class="key-badge" id="k-a">A</span>
+          <span class="key-badge" id="k-s">S</span>
+          <span class="key-badge" id="k-d">D</span>
+          <span class="key-badge" id="k-shift">Shift</span>
+          <span class="key-badge" id="k-lmb">LMB</span>
+          <span class="key-badge" id="k-rmb">RMB</span>
+        </div>
+      </div>
+
+      <!-- Phone Bezel & Landscape Screen -->
+      <div class="phone-wrapper">
+        <div class="phone-bezel">
+          <div class="phone-notch"></div>
+          
+          <div class="phone-hud" id="hud-viewport">
+            <!-- Status Bar -->
+            <div class="hud-status-bar">
+              <div class="hud-stats-group">
+                <div class="hud-stat-item">FPS: <span class="val" id="hud-fps">120</span></div>
+                <div class="hud-stat-item">RTT: <span class="val" id="hud-rtt">7 ms</span></div>
+                <div class="hud-stat-item">Wi-Fi: <span class="val">5 GHz</span></div>
+              </div>
+              <div class="hud-stats-group">
+                <div class="hud-stat-item">Target: <span class="val" id="hud-target-name">Deadlock.exe</span></div>
+                <div class="hud-stat-item">Status: <span class="val" id="hud-state-label" style="color: var(--accent-emerald);">CONNECTED</span></div>
+              </div>
+            </div>
+
+            <!-- 3D Camera / Wireframe Horizon Simulation -->
+            <div class="viewport-horizon">
+              <div class="crosshair" id="sim-crosshair">
+                <div class="crosshair-dot"></div>
+              </div>
+            </div>
+
+            <!-- Touch Look Zone Overlay (x: 42% to 100%) -->
+            <div class="look-zone-overlay" id="look-zone">
+              <div class="look-zone-hint">LOOK ZONE (42% - 100%)<br>SWIPE TO AIM</div>
+            </div>
+
+            <!-- Dynamic HUD Controls are populated here by JavaScript -->
+          </div>
+        </div>
+      </div>
+
+      <div style="font-family: var(--font-mono); font-size: 12px; color: var(--ink-muted); display: flex; gap: 20px;">
+        <span>Cumulative LookX: <b id="val-look-x" style="color: var(--accent-cyan);">0</b></span>
+        <span>Cumulative LookY: <b id="val-look-y" style="color: var(--accent-cyan);">0</b></span>
+        <span>Packets Sent: <b id="val-packets-count" style="color: var(--accent-emerald);">0</b></span>
+      </div>
+    </section>
+
+    <!-- TAB 2: INTERACTIVE LAYOUT EDITOR -->
+    <section class="tab-content" id="tab-editor">
+      <div class="editor-workspace">
+        <!-- Canvas & Editor Controls -->
+        <div>
+          <div class="editor-toolbar">
+            <button class="action-btn primary" id="btn-export-json">💾 Export JSON</button>
+            <button class="action-btn" id="btn-import-json">📂 Import JSON</button>
+            <button class="action-btn danger" id="btn-reset-default">↺ Reset Default Layout</button>
+            <span style="font-size: 12px; color: var(--ink-muted); align-self: center; margin-left: auto;">
+              Click control to inspect. Drag on canvas to reposition.
+            </span>
+          </div>
+
+          <div class="phone-wrapper" style="max-width: 640px; margin: 0 auto;">
+            <div class="phone-bezel">
+              <div class="phone-hud" id="editor-viewport">
+                <!-- Controls rendered for layout editor -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inspector Properties Panel -->
+        <div class="inspector-panel">
+          <div class="inspector-title">
+            <span>Control Inspector</span>
+            <span class="brand-badge" id="insp-id-badge">select a control</span>
+          </div>
+
+          <div class="form-group">
+            <label>Control ID</label>
+            <input type="text" id="insp-id" readonly disabled>
+          </div>
+
+          <div class="form-group">
+            <label>Label</label>
+            <input type="text" id="insp-label">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Control Type</label>
+              <select id="insp-type">
+                <option value="button">Button</option>
+                <option value="stick">Stick</option>
+                <option value="chip">Chip</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Behavior</label>
+              <select id="insp-behavior">
+                <option value="hold">Hold</option>
+                <option value="toggle">Toggle</option>
+                <option value="tap">Tap (30ms pulse)</option>
+                <option value="stick">Stick (WASD)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Bound Keyboard Key (docs/keys.md)</label>
+            <select id="insp-keyid">
+              <option value="255">None</option>
+              <!-- Populated dynamically with KeyIds 0..61 -->
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Bound Mouse Button</label>
+            <select id="insp-mousebtn">
+              <option value="none">None</option>
+              <option value="LMB">Left Mouse Button (LMB)</option>
+              <option value="RMB">Right Mouse Button (RMB)</option>
+              <option value="MMB">Middle Mouse Button (MMB)</option>
+              <option value="X1">X1 (Browser Back)</option>
+              <option value="X2">X2 (Browser Forward)</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>X Position (%)</label>
+              <input type="number" id="insp-x" step="0.5" min="0" max="100">
+            </div>
+            <div class="form-group">
+              <label>Y Position (%)</label>
+              <input type="number" id="insp-y" step="0.5" min="0" max="100">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Width (%)</label>
+              <input type="number" id="insp-w" step="0.5" min="2" max="100">
+            </div>
+            <div class="form-group">
+              <label>Height (%)</label>
+              <input type="number" id="insp-h" step="0.5" min="2" max="100">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Opacity (<span id="val-insp-opacity">0.85</span>)</label>
+            <input type="range" id="insp-opacity" min="0.1" max="1.0" step="0.05">
+          </div>
+
+          <button class="action-btn primary" id="btn-apply-inspector" style="margin-top: 8px;">Apply Properties</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: WINDOWS RECEIVER COMPANION DASHBOARD -->
+    <section class="tab-content" id="tab-receiver">
+      <div class="receiver-dashboard">
+        <!-- Left Panel: State, Guards & Pairing -->
+        <div class="receiver-panel">
+          <div class="panel-header">
+            <span class="panel-title">Receiver Control</span>
+            <span class="brand-badge">.NET 10 WPF</span>
+          </div>
+
+          <!-- Armed Master Switch -->
+          <div class="armed-toggle-box">
+            <button class="big-toggle-btn armed" id="btn-toggle-armed">
+              <span class="dot armed"></span>
+              <span id="label-armed">RECEIVER ARMED (INJECTING)</span>
+            </button>
+            <div style="font-size: 11px; color: var(--ink-muted);">In keyboard/mouse mode, SendInput generates raw hardware scan codes.</div>
+          </div>
+
+          <!-- Target Process Selector -->
+          <div class="form-group">
+            <label>Target Game Process (FocusGuard)</label>
+            <select id="sel-target-process">
+              <option value="Deadlock.exe">Deadlock (Deadlock.exe)</option>
+              <option value="PUBG.exe">PUBG: Battlegrounds (PUBG.exe)</option>
+              <option value="Cyberpunk2077.exe">Cyberpunk 2077 (Cyberpunk2077.exe)</option>
+              <option value="ApexLegends.exe">Apex Legends (ApexLegends.exe)</option>
+              <option value="cs2.exe">Counter-Strike 2 (cs2.exe)</option>
+              <option value="ANY_WINDOW">⚠️ Any Window (Global Injection - Test Only)</option>
+            </select>
+          </div>
+
+          <!-- Tri-Guard Safety Architecture Widget -->
+          <div class="tri-guard-card">
+            <div style="font-size: 12px; font-weight: 600; color: var(--ink-primary); margin-bottom: 2px;">
+              Tri-Guard Safety Architecture
+            </div>
+            
+            <div class="guard-item">
+              <span class="guard-name">1. 500 ms Watchdog</span>
+              <span class="guard-badge" id="guard-watchdog">ACTIVE (38 ms)</span>
+            </div>
+
+            <div class="guard-item">
+              <span class="guard-name">2. FocusGuard</span>
+              <span class="guard-badge" id="guard-focus">FOCUSED</span>
+            </div>
+
+            <div class="guard-item">
+              <span class="guard-name">3. Kill-Switch (Ctrl+Alt+F12)</span>
+              <span class="guard-badge" id="guard-killswitch">ARMED</span>
+            </div>
+          </div>
+
+          <!-- Simulation Triggers for Testing Safety -->
+          <div style="display: flex; gap: 8px;">
+            <button class="action-btn" id="btn-sim-focus-loss" style="flex: 1; font-size: 12px;">Alt-Tab (Focus Loss)</button>
+            <button class="action-btn" id="btn-sim-watchdog-drop" style="flex: 1; font-size: 12px;">Drop UDP (500ms)</button>
+          </div>
+
+          <!-- Emergency Kill Switch Button -->
+          <button class="kill-switch-btn" id="btn-emergency-kill">
+            <span>🛑</span> EMERGENCY KILL-SWITCH (Ctrl+Alt+F12)
+          </button>
+
+          <!-- Pairing QR Code Card -->
+          <div class="qr-card">
+            <div style="font-size: 13px; font-weight: 600; color: var(--ink-primary);">LAN Pairing QR Code</div>
+            <canvas id="qr-canvas"></canvas>
+            <div class="qr-details">
+              Host: <span id="qr-ip" style="color: var(--accent-cyan);">192.168.1.145:47789</span><br>
+              Key: <span id="qr-key" style="color: var(--accent-emerald);">4c8f3b2e...d5e</span> (DPAPI)
+            </div>
+            <div style="display: flex; gap: 8px; width: 100%;">
+              <button class="action-btn" id="btn-regen-key" style="flex: 1; font-size: 11px;">Regenerate PSK</button>
+              <button class="action-btn danger" id="btn-revoke-pairing" style="flex: 1; font-size: 11px;">Forget Device</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Panel: Live 120 Hz UDP Packet Log -->
+        <div class="receiver-panel">
+          <div class="panel-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span class="panel-title">Live Input Wire Stream</span>
+              <span class="brand-badge" id="packet-rate-badge">120 Hz</span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="action-btn" id="btn-pause-log" style="padding: 4px 8px; font-size: 11px;">Pause</button>
+              <button class="action-btn" id="btn-clear-log" style="padding: 4px 8px; font-size: 11px;">Clear</button>
+            </div>
+          </div>
+
+          <div class="log-container" id="receiver-log">
+            <!-- Live packets dynamically appended here -->
+          </div>
+
+          <div style="font-size: 12px; color: var(--ink-muted); display: flex; justify-content: space-between;">
+            <span>Wire format: Little-Endian 46-byte <code style="font-family: var(--font-mono); color: var(--accent-cyan);">input_kbm</code></span>
+            <span>Integrity: Truncated HMAC-SHA256 (8 bytes)</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal for JSON Import/Export -->
+  <div class="modal-backdrop" id="json-modal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-title">Export Layout Profile (JSON)</div>
+        <button class="modal-close" id="btn-modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <textarea id="modal-json-text" spellcheck="false"></textarea>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button class="action-btn" id="btn-modal-copy">Copy to Clipboard</button>
+        <button class="action-btn primary" id="btn-modal-action">Apply Layout</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* =========================================================================
+       1. Key ID Mapping Specification (docs/keys.md)
+       ========================================================================= */
+    const KEY_NAMES = {
+      0: "A", 1: "B", 2: "C", 3: "D", 4: "E", 5: "F", 6: "G", 7: "H",
+      8: "I", 9: "J", 10: "K", 11: "L", 12: "M", 13: "N", 14: "O", 15: "P",
+      16: "Q", 17: "R", 18: "S", 19: "T", 20: "U", 21: "V", 22: "W", 23: "X",
+      24: "Y", 25: "Z",
+      26: "0", 27: "1", 28: "2", 29: "3", 30: "4", 31: "5", 32: "6", 33: "7", 34: "8", 35: "9",
+      36: "Space", 37: "Tab", 38: "LeftShift", 39: "LeftCtrl", 40: "LeftAlt",
+      41: "Escape", 42: "Enter", 43: "CapsLock",
+      44: "F1", 45: "F2", 46: "F3", 47: "F4", 48: "F5", 49: "F6",
+      50: "F7", 51: "F8", 52: "F9", 53: "F10", 54: "F11", 55: "F12",
+      56: "UpArrow", 57: "DownArrow", 58: "LeftArrow", 59: "RightArrow",
+      60: "Backspace", 61: "Tilde"
+    };
+
+    /* =========================================================================
+       2. Authoritative Default PUBG Mobile Layout Profile (docs/layout-format.md)
+       ========================================================================= */
+    const DEFAULT_PROFILE = {
+      profileName: "Default Battle Royale",
+      version: 1,
+      settings: {
+        touchSensitivity: 1.0,
+        adsSensitivityMultiplier: 0.6,
+        gyroEnabled: false,
+        gyroSensitivity: 1.0,
+        stickDeadzone: 0.35,
+        stickFloatingOrigin: true
+      },
+      controls: [
+        { id: "ms", type: "stick", label: "Move", behavior: "stick", x: 16.0, y: 66.0, width: 17.0, height: 17.0, opacity: 0.75 },
+        { id: "run", type: "button", label: "Sprint", boundKeyId: 38, boundMouseButton: "none", behavior: "toggle", x: 16.0, y: 34.0, width: 5.6, height: 5.6, opacity: 0.75 },
+        { id: "lfire", type: "button", label: "Fire", boundMouseButton: "LMB", behavior: "hold", x: 31.0, y: 58.0, width: 9.0, height: 9.0, opacity: 0.85 },
+        { id: "rfire", type: "button", label: "Fire & Look", boundMouseButton: "LMB", behavior: "hold", x: 86.0, y: 64.0, width: 14.0, height: 14.0, opacity: 0.85 },
+        { id: "scope", type: "button", label: "ADS", boundMouseButton: "RMB", behavior: "toggle", x: 73.0, y: 47.0, width: 8.0, height: 8.0, opacity: 0.85 },
+        { id: "jump", type: "button", label: "Jump", boundKeyId: 36, boundMouseButton: "none", behavior: "hold", x: 94.0, y: 38.0, width: 8.0, height: 8.0, opacity: 0.85 },
+        { id: "crouch", type: "button", label: "Crouch", boundKeyId: 2, boundMouseButton: "none", behavior: "hold", x: 76.0, y: 84.0, width: 7.0, height: 7.0, opacity: 0.85 },
+        { id: "prone", type: "button", label: "Prone", boundKeyId: 25, boundMouseButton: "none", behavior: "hold", x: 95.0, y: 88.0, width: 7.0, height: 7.0, opacity: 0.85 },
+        { id: "leanl", type: "button", label: "Lean L", boundKeyId: 16, boundMouseButton: "none", behavior: "hold", x: 62.0, y: 32.0, width: 6.0, height: 6.0, opacity: 0.8 },
+        { id: "leanr", type: "button", label: "Lean R", boundKeyId: 4, boundMouseButton: "none", behavior: "hold", x: 70.0, y: 32.0, width: 6.0, height: 6.0, opacity: 0.8 },
+        { id: "reload", type: "button", label: "Reload", boundKeyId: 17, boundMouseButton: "none", behavior: "hold", x: 64.0, y: 68.0, width: 6.4, height: 6.4, opacity: 0.85 },
+        { id: "use", type: "button", label: "Use", boundKeyId: 5, boundMouseButton: "none", behavior: "hold", x: 58.0, y: 54.0, width: 6.4, height: 6.4, opacity: 0.8 },
+        { id: "s1", type: "button", label: "Slot 1", boundKeyId: 27, boundMouseButton: "none", behavior: "hold", x: 38.0, y: 15.0, width: 6.0, height: 6.0, opacity: 0.75 },
+        { id: "s2", type: "button", label: "Slot 2", boundKeyId: 28, boundMouseButton: "none", behavior: "hold", x: 44.5, y: 15.0, width: 6.0, height: 6.0, opacity: 0.75 },
+        { id: "s3", type: "button", label: "Melee", boundKeyId: 29, boundMouseButton: "none", behavior: "hold", x: 51.0, y: 15.0, width: 6.0, height: 6.0, opacity: 0.75 },
+        { id: "gren", type: "button", label: "Grenade", boundKeyId: 6, boundMouseButton: "none", behavior: "hold", x: 58.0, y: 15.0, width: 6.0, height: 6.0, opacity: 0.75 },
+        { id: "heal", type: "button", label: "Heal", boundKeyId: 31, boundMouseButton: "none", behavior: "hold", x: 65.0, y: 15.0, width: 6.0, height: 6.0, opacity: 0.75 },
+        { id: "map", type: "button", label: "Map", boundKeyId: 12, boundMouseButton: "none", behavior: "hold", x: 84.0, y: 12.0, width: 5.4, height: 5.4, opacity: 0.75 },
+        { id: "bag", type: "button", label: "Bag", boundKeyId: 37, boundMouseButton: "none", behavior: "hold", x: 91.0, y: 12.0, width: 5.4, height: 5.4, opacity: 0.75 },
+        { id: "gyro", type: "chip", label: "Gyro", behavior: "toggle", x: 50.0, y: 90.0, width: 15.0, height: 4.8, opacity: 0.7 }
+      ]
+    };
+
+    let currentProfile = JSON.parse(JSON.stringify(DEFAULT_PROFILE));
+    let selectedControlId = null;
+
+    /* =========================================================================
+       3. Runtime State & Input Accumulators
+       ========================================================================= */
+    const runtimeState = {
+      isArmed: true,
+      targetProcess: "Deadlock.exe",
+      isTargetFocused: true,
+      isKillSwitched: false,
+      isWatchdogHealthy: true,
+      lastPacketTime: Date.now(),
+      sequenceNumber: 1000,
+      sessionId: 0x4A8C91F2,
+      packetsCount: 0,
+      lookX: 0,
+      lookY: 0,
+      activeKeys: new Set(),
+      activeMouse: new Set(),
+      stickPos: { x: 0, y: 0 },
+      isSprinting: false,
+      isADS: false,
+      isGyroActive: false,
+      logPaused: false
+    };
+
+    /* =========================================================================
+       4. Self-Contained Offline QR Code Matrix Generator (Byte Mode)
+       ========================================================================= */
+    function renderPairingQRCode(canvasId, text) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const size = 33; // 33x33 module matrix
+      canvas.width = 180;
+      canvas.height = 180;
+      const scale = canvas.width / size;
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#0a0d14';
+
+      // Deterministic hash-based QR module synthesis for offline simulation
+      let hash = 2166136261;
+      for (let i = 0; i < text.length; i++) {
+        hash = (hash ^ text.charCodeAt(i)) * 16777619;
+      }
+
+      function drawFinder(x, y) {
+        ctx.fillRect(x * scale, y * scale, 7 * scale, 7 * scale);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect((x + 1) * scale, (y + 1) * scale, 5 * scale, 5 * scale);
+        ctx.fillStyle = '#0a0d14';
+        ctx.fillRect((x + 2) * scale, (y + 2) * scale, 3 * scale, 3 * scale);
+      }
+
+      // 3 Position Finders
+      drawFinder(0, 0);
+      drawFinder(size - 7, 0);
+      drawFinder(0, size - 7);
+
+      // Timing Patterns
+      for (let i = 8; i < size - 8; i++) {
+        if (i % 2 === 0) {
+          ctx.fillRect(i * scale, 6 * scale, scale, scale);
+          ctx.fillRect(6 * scale, i * scale, scale, scale);
+        }
+      }
+
+      // Data Grid
+      let seed = Math.abs(hash);
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          if ((x < 8 && y < 8) || (x >= size - 8 && y < 8) || (x < 8 && y >= size - 8)) continue;
+          if (x === 6 || y === 6) continue;
+          seed = (seed * 9301 + 49297) % 233280;
+          if ((seed / 233280) > 0.52) {
+            ctx.fillRect(x * scale, y * scale, scale, scale);
+          }
+        }
+      }
+    }
+
+    /* =========================================================================
+       5. HUD Rendering Engine
+       ========================================================================= */
+    function renderHUD() {
+      const container = document.getElementById('hud-viewport');
+      // Clean controls (preserve status bar, crosshair, and look zone)
+      const existing = container.querySelectorAll('.hud-control, .hud-stick-base');
+      existing.forEach(e => e.remove());
+
+      currentProfile.controls.forEach(ctrl => {
+        if (ctrl.type === 'stick') {
+          // Render Move Stick
+          const stick = document.createElement('div');
+          stick.className = 'hud-stick-base';
+          stick.id = `ctrl-${ctrl.id}`;
+          stick.style.left = `${ctrl.x}%`;
+          stick.style.top = `${ctrl.y}%`;
+          stick.style.width = `${ctrl.width}%`;
+          stick.style.height = `${ctrl.width * (19.5 / 9)}%`; // Keep circular in 19.5:9
+          stick.style.opacity = ctrl.opacity;
+
+          stick.innerHTML = `
+            <div class="hud-stick-wasd">
+              <span class="dir-w" id="stick-w">W</span>
+              <span class="dir-s" id="stick-s">S</span>
+              <span class="dir-a" id="stick-a">A</span>
+              <span class="dir-d" id="stick-d">D</span>
+            </div>
+            <div class="hud-stick-thumb" id="stick-thumb">MOVE</div>
+          `;
+          container.appendChild(stick);
+          setupStickInteraction(stick);
+        } else {
+          // Render Buttons / Chips
+          const btn = document.createElement('div');
+          btn.className = `hud-control ${ctrl.id === 'rfire' ? 'rfire' : ''} ${ctrl.type === 'chip' ? 'chip' : ''}`;
+          btn.id = `ctrl-${ctrl.id}`;
+          btn.style.left = `${ctrl.x}%`;
+          btn.style.top = `${ctrl.y}%`;
+          btn.style.width = `${ctrl.width}%`;
+          btn.style.height = `${ctrl.height * (19.5 / 9)}%`;
+          btn.style.opacity = ctrl.opacity;
+
+          const boundKeyName = ctrl.boundKeyId !== undefined ? (KEY_NAMES[ctrl.boundKeyId] || '') : '';
+          const boundMouse = ctrl.boundMouseButton && ctrl.boundMouseButton !== 'none' ? ctrl.boundMouseButton : '';
+          const bindingBadge = boundMouse || boundKeyName;
+
+          btn.innerHTML = `
+            <div class="control-label">
+              <div>${ctrl.label}</div>
+              ${bindingBadge ? `<span class="control-sub">${bindingBadge}</span>` : ''}
+            </div>
+          `;
+          container.appendChild(btn);
+          setupButtonInteraction(btn, ctrl);
+        }
+      });
+    }
+
+    /* =========================================================================
+       6. Interactive Input Handlers (Move Stick, Look Zone, Buttons)
+       ========================================================================= */
+    function setupStickInteraction(stickElement) {
+      let isDragging = false;
+      const thumb = stickElement.querySelector('#stick-thumb');
+
+      function handleStart(e) {
+        isDragging = true;
+        handleMove(e);
+      }
+
+      function handleMove(e) {
+        if (!isDragging) return;
+        const rect = stickElement.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+        const maxDist = rect.width / 2;
+        let dx = clientX - centerX;
+        let dy = clientY - centerY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist > maxDist) {
+          dx = (dx / dist) * maxDist;
+          dy = (dy / dist) * maxDist;
+        }
+
+        thumb.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+
+        // Deadzone 0.35 evaluation
+        const normX = dx / maxDist;
+        const normY = dy / maxDist;
+        const deadzone = currentProfile.settings.stickDeadzone;
+
+        const stickW = stickElement.querySelector('#stick-w');
+        const stickS = stickElement.querySelector('#stick-s');
+        const stickA = stickElement.querySelector('#stick-a');
+        const stickD = stickElement.querySelector('#stick-d');
+
+        runtimeState.activeKeys.delete(22); // W
+        runtimeState.activeKeys.delete(18); // S
+        runtimeState.activeKeys.delete(0);  // A
+        runtimeState.activeKeys.delete(3);  // D
+
+        if (normY < -deadzone) {
+          runtimeState.activeKeys.add(22);
+          stickW.classList.add('lit');
+        } else {
+          stickW.classList.remove('lit');
+        }
+
+        if (normY > deadzone) {
+          runtimeState.activeKeys.add(18);
+          stickS.classList.add('lit');
+        } else {
+          stickS.classList.remove('lit');
+        }
+
+        if (normX < -deadzone) {
+          runtimeState.activeKeys.add(0);
+          stickA.classList.add('lit');
+        } else {
+          stickA.classList.remove('lit');
+        }
+
+        if (normX > deadzone) {
+          runtimeState.activeKeys.add(3);
+          stickD.classList.add('lit');
+        } else {
+          stickD.classList.remove('lit');
+        }
+
+        // Sprint Threshold Check
+        if (normY < -0.85 && !runtimeState.isSprinting) {
+          runtimeState.isSprinting = true;
+          runtimeState.activeKeys.add(38); // Shift
+        }
+
+        updateLiveKeyBadges();
+      }
+
+      function handleEnd() {
+        if (!isDragging) return;
+        isDragging = false;
+        thumb.style.transform = `translate(-50%, -50%)`;
+        stickElement.querySelectorAll('.hud-stick-wasd span').forEach(s => s.classList.remove('lit'));
+        runtimeState.activeKeys.delete(22);
+        runtimeState.activeKeys.delete(18);
+        runtimeState.activeKeys.delete(0);
+        runtimeState.activeKeys.delete(3);
+        if (!runtimeState.isSprinting) {
+          runtimeState.activeKeys.delete(38);
+        }
+        updateLiveKeyBadges();
+      }
+
+      stickElement.addEventListener('mousedown', handleStart);
+      window.addEventListener('mousemove', handleMove);
+      window.addEventListener('mouseup', handleEnd);
+
+      stickElement.addEventListener('touchstart', handleStart, { passive: true });
+      window.addEventListener('touchmove', handleMove, { passive: true });
+      window.addEventListener('touchend', handleEnd, { passive: true });
+    }
+
+    function setupButtonInteraction(btn, ctrl) {
+      function activate() {
+        if (ctrl.behavior === 'toggle') {
+          const isActive = btn.classList.toggle('active');
+          if (ctrl.id === 'scope') {
+            runtimeState.isADS = isActive;
+            if (isActive) runtimeState.activeMouse.add('RMB');
+            else runtimeState.activeMouse.delete('RMB');
+          } else if (ctrl.id === 'run') {
+            runtimeState.isSprinting = isActive;
+            if (isActive) runtimeState.activeKeys.add(38);
+            else runtimeState.activeKeys.delete(38);
+          } else if (ctrl.id === 'gyro') {
+            runtimeState.isGyroActive = isActive;
+          }
+        } else {
+          btn.classList.add('active');
+          if (ctrl.boundKeyId !== undefined) runtimeState.activeKeys.add(ctrl.boundKeyId);
+          if (ctrl.boundMouseButton && ctrl.boundMouseButton !== 'none') runtimeState.activeMouse.add(ctrl.boundMouseButton);
+
+          if (ctrl.behavior === 'tap') {
+            setTimeout(() => {
+              btn.classList.remove('active');
+              if (ctrl.boundKeyId !== undefined) runtimeState.activeKeys.delete(ctrl.boundKeyId);
+              if (ctrl.boundMouseButton && ctrl.boundMouseButton !== 'none') runtimeState.activeMouse.delete(ctrl.boundMouseButton);
+              updateLiveKeyBadges();
+            }, 40);
+          }
+        }
+        updateLiveKeyBadges();
+      }
+
+      function deactivate() {
+        if (ctrl.behavior === 'hold') {
+          btn.classList.remove('active');
+          if (ctrl.boundKeyId !== undefined) runtimeState.activeKeys.delete(ctrl.boundKeyId);
+          if (ctrl.boundMouseButton && ctrl.boundMouseButton !== 'none') runtimeState.activeMouse.delete(ctrl.boundMouseButton);
+          updateLiveKeyBadges();
+        }
+      }
+
+      btn.addEventListener('mousedown', activate);
+      window.addEventListener('mouseup', deactivate);
+      btn.addEventListener('touchstart', (e) => { e.preventDefault(); activate(); });
+      window.addEventListener('touchend', deactivate);
+
+      // Support Right Fire Drag-to-Look
+      if (ctrl.id === 'rfire') {
+        let lastX = 0, lastY = 0, isDragging = false;
+        btn.addEventListener('mousedown', (e) => { isDragging = true; lastX = e.clientX; lastY = e.clientY; });
+        btn.addEventListener('touchstart', (e) => { isDragging = true; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; });
+
+        window.addEventListener('mousemove', (e) => {
+          if (!isDragging) return;
+          const dx = e.clientX - lastX;
+          const dy = e.clientY - lastY;
+          lastX = e.clientX;
+          lastY = e.clientY;
+          accumulateLook(dx, dy);
+        });
+        window.addEventListener('touchmove', (e) => {
+          if (!isDragging) return;
+          const dx = e.touches[0].clientX - lastX;
+          const dy = e.touches[0].clientY - lastY;
+          lastX = e.touches[0].clientX;
+          lastY = e.touches[0].clientY;
+          accumulateLook(dx, dy);
+        });
+        window.addEventListener('mouseup', () => { isDragging = false; });
+        window.addEventListener('touchend', () => { isDragging = false; });
+      }
+    }
+
+    // Look Zone Swipe-to-Look Mechanics
+    function setupLookZone() {
+      const lookZone = document.getElementById('look-zone');
+      let isLooking = false;
+      let lastX = 0, lastY = 0;
+
+      function handleStart(e) {
+        isLooking = true;
+        lastX = e.touches ? e.touches[0].clientX : e.clientX;
+        lastY = e.touches ? e.touches[0].clientY : e.clientY;
+      }
+
+      function handleMove(e) {
+        if (!isLooking) return;
+        const curX = e.touches ? e.touches[0].clientX : e.clientX;
+        const curY = e.touches ? e.touches[0].clientY : e.clientY;
+        const dx = curX - lastX;
+        const dy = curY - lastY;
+        lastX = curX;
+        lastY = curY;
+
+        accumulateLook(dx, dy);
+      }
+
+      function handleEnd() {
+        isLooking = false;
+      }
+
+      lookZone.addEventListener('mousedown', handleStart);
+      window.addEventListener('mousemove', handleMove);
+      window.addEventListener('mouseup', handleEnd);
+
+      lookZone.addEventListener('touchstart', handleStart, { passive: true });
+      window.addEventListener('touchmove', handleMove, { passive: true });
+      window.addEventListener('touchend', handleEnd, { passive: true });
+    }
+
+    function accumulateLook(dx, dy) {
+      const mult = runtimeState.isADS ? currentProfile.settings.adsSensitivityMultiplier : 1.0;
+      const countX = Math.round(dx * currentProfile.settings.touchSensitivity * mult * 2.5);
+      const countY = Math.round(dy * currentProfile.settings.touchSensitivity * mult * 2.5);
+
+      runtimeState.lookX += countX;
+      runtimeState.lookY += countY;
+
+      document.getElementById('val-look-x').textContent = runtimeState.lookX;
+      document.getElementById('val-look-y').textContent = runtimeState.lookY;
+
+      // Animate virtual crosshair horizon
+      const crosshair = document.getElementById('sim-crosshair');
+      if (crosshair) {
+        const panX = ((runtimeState.lookX % 200) / 200) * 80;
+        const panY = ((runtimeState.lookY % 200) / 200) * 80;
+        crosshair.style.transform = `translate(${panX}px, ${panY}px)`;
+      }
+    }
+
+    function updateLiveKeyBadges() {
+      document.getElementById('k-w').className = `key-badge ${runtimeState.activeKeys.has(22) ? 'pressed' : ''}`;
+      document.getElementById('k-a').className = `key-badge ${runtimeState.activeKeys.has(0) ? 'pressed' : ''}`;
+      document.getElementById('k-s').className = `key-badge ${runtimeState.activeKeys.has(18) ? 'pressed' : ''}`;
+      document.getElementById('k-d').className = `key-badge ${runtimeState.activeKeys.has(3) ? 'pressed' : ''}`;
+      document.getElementById('k-shift').className = `key-badge ${runtimeState.activeKeys.has(38) ? 'pressed' : ''}`;
+      document.getElementById('k-lmb').className = `key-badge ${runtimeState.activeMouse.has('LMB') ? 'pressed' : ''}`;
+      document.getElementById('k-rmb').className = `key-badge ${runtimeState.activeMouse.has('RMB') ? 'pressed' : ''}`;
+    }
+
+    /* =========================================================================
+       7. Layout Editor Engine & Interactive Drag/Resize
+       ========================================================================= */
+    function renderEditorCanvas() {
+      const container = document.getElementById('editor-viewport');
+      container.innerHTML = '';
+
+      currentProfile.controls.forEach(ctrl => {
+        const el = document.createElement('div');
+        el.className = `hud-control ${ctrl.type === 'chip' ? 'chip' : ''} ${ctrl.id === selectedControlId ? 'editor-selected' : ''}`;
+        el.id = `edit-ctrl-${ctrl.id}`;
+        el.style.left = `${ctrl.x}%`;
+        el.style.top = `${ctrl.y}%`;
+        el.style.width = `${ctrl.width}%`;
+        el.style.height = `${ctrl.height * (19.5 / 9)}%`;
+        el.style.opacity = ctrl.opacity;
+        el.innerHTML = `<div class="control-label">${ctrl.label}</div>`;
+
+        el.addEventListener('mousedown', (e) => {
+          e.stopPropagation();
+          selectControl(ctrl.id);
+          startDraggingControl(e, ctrl, el, container);
+        });
+
+        container.appendChild(el);
+      });
+    }
+
+    function selectControl(id) {
+      selectedControlId = id;
+      document.querySelectorAll('#editor-viewport .hud-control').forEach(c => c.classList.remove('editor-selected'));
+      const activeEl = document.getElementById(`edit-ctrl-${id}`);
+      if (activeEl) activeEl.classList.add('editor-selected');
+
+      const ctrl = currentProfile.controls.find(c => c.id === id);
+      if (!ctrl) return;
+
+      document.getElementById('insp-id-badge').textContent = ctrl.id;
+      document.getElementById('insp-id').value = ctrl.id;
+      document.getElementById('insp-label').value = ctrl.label;
+      document.getElementById('insp-type').value = ctrl.type;
+      document.getElementById('insp-behavior').value = ctrl.behavior;
+      document.getElementById('insp-keyid').value = ctrl.boundKeyId !== undefined ? ctrl.boundKeyId : 255;
+      document.getElementById('insp-mousebtn').value = ctrl.boundMouseButton || 'none';
+      document.getElementById('insp-x').value = ctrl.x.toFixed(1);
+      document.getElementById('insp-y').value = ctrl.y.toFixed(1);
+      document.getElementById('insp-w').value = ctrl.width.toFixed(1);
+      document.getElementById('insp-h').value = ctrl.height.toFixed(1);
+      document.getElementById('insp-opacity').value = ctrl.opacity;
+      document.getElementById('val-insp-opacity').textContent = ctrl.opacity;
+    }
+
+    function startDraggingControl(e, ctrl, element, container) {
+      const rect = container.getBoundingClientRect();
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const origCtrlX = ctrl.x;
+      const origCtrlY = ctrl.y;
+
+      function onMove(moveEvent) {
+        const dx = moveEvent.clientX - startX;
+        const dy = moveEvent.clientY - startY;
+
+        let newX = origCtrlX + (dx / rect.width) * 100;
+        let newY = origCtrlY + (dy / rect.height) * 100;
+
+        newX = Math.max(3, Math.min(97, newX));
+        newY = Math.max(5, Math.min(95, newY));
+
+        ctrl.x = parseFloat(newX.toFixed(1));
+        ctrl.y = parseFloat(newY.toFixed(1));
+
+        element.style.left = `${ctrl.x}%`;
+        element.style.top = `${ctrl.y}%`;
+
+        document.getElementById('insp-x').value = ctrl.x;
+        document.getElementById('insp-y').value = ctrl.y;
+      }
+
+      function onUp() {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+        renderHUD();
+      }
+
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    }
+
+    function applyInspectorChanges() {
+      if (!selectedControlId) return;
+      const ctrl = currentProfile.controls.find(c => c.id === selectedControlId);
+      if (!ctrl) return;
+
+      ctrl.label = document.getElementById('insp-label').value;
+      ctrl.type = document.getElementById('insp-type').value;
+      ctrl.behavior = document.getElementById('insp-behavior').value;
+
+      const keyVal = parseInt(document.getElementById('insp-keyid').value);
+      if (keyVal === 255) delete ctrl.boundKeyId;
+      else ctrl.boundKeyId = keyVal;
+
+      ctrl.boundMouseButton = document.getElementById('insp-mousebtn').value;
+      ctrl.x = parseFloat(document.getElementById('insp-x').value);
+      ctrl.y = parseFloat(document.getElementById('insp-y').value);
+      ctrl.width = parseFloat(document.getElementById('insp-w').value);
+      ctrl.height = parseFloat(document.getElementById('insp-h').value);
+      ctrl.opacity = parseFloat(document.getElementById('insp-opacity').value);
+
+      renderEditorCanvas();
+      renderHUD();
+    }
+
+    /* =========================================================================
+       8. Windows Receiver Companion & Tri-Guard Safety Engine
+       ========================================================================= */
+    function setupReceiverSimulation() {
+      // Toggle Armed Button
+      const btnArmed = document.getElementById('btn-toggle-armed');
+      const labelArmed = document.getElementById('label-armed');
+      const globalDot = document.getElementById('global-status-dot');
+      const globalStatus = document.getElementById('global-status-text');
+
+      btnArmed.addEventListener('click', () => {
+        runtimeState.isArmed = !runtimeState.isArmed;
+        if (runtimeState.isArmed) {
+          btnArmed.className = 'big-toggle-btn armed';
+          labelArmed.textContent = 'RECEIVER ARMED (INJECTING)';
+          globalDot.className = 'dot armed';
+          globalStatus.textContent = 'ARMED (120 Hz)';
+          logEvent('STATUS', `Receiver Armed on process: ${runtimeState.targetProcess}`);
+        } else {
+          neutralizeAll('USER_DISARMED');
+          btnArmed.className = 'big-toggle-btn disarmed';
+          labelArmed.textContent = 'RECEIVER DISARMED (SAFE)';
+          globalDot.className = 'dot disarmed';
+          globalStatus.textContent = 'DISARMED';
+          logEvent('SAFETY', 'Receiver Disarmed -> Neutralize triggered');
+        }
+      });
+
+      // Target Process Selection
+      const selProc = document.getElementById('sel-target-process');
+      selProc.addEventListener('change', () => {
+        runtimeState.targetProcess = selProc.value;
+        document.getElementById('hud-target-name').textContent = selProc.value;
+        logEvent('STATUS', `Target process set to: ${selProc.value}`);
+      });
+
+      // Focus Loss Simulation (Alt-Tab)
+      const btnFocus = document.getElementById('btn-sim-focus-loss');
+      const guardFocus = document.getElementById('guard-focus');
+      btnFocus.addEventListener('click', () => {
+        runtimeState.isTargetFocused = !runtimeState.isTargetFocused;
+        if (!runtimeState.isTargetFocused) {
+          guardFocus.className = 'guard-badge tripped';
+          guardFocus.textContent = 'FOCUS LOST';
+          btnFocus.textContent = 'Restore Focus';
+          neutralizeAll('FOCUS_GUARD_TRIPPED');
+          logEvent('SAFETY', '[FocusGuard] Foreground window mismatch -> NEUTRALIZE ALL INPUT');
+        } else {
+          guardFocus.className = 'guard-badge';
+          guardFocus.textContent = 'FOCUSED';
+          btnFocus.textContent = 'Alt-Tab (Focus Loss)';
+          logEvent('STATUS', '[FocusGuard] Target game regained foreground focus');
+        }
+      });
+
+      // Watchdog Packet Drop Simulation
+      const btnWatchdog = document.getElementById('btn-sim-watchdog-drop');
+      const guardWatchdog = document.getElementById('guard-watchdog');
+      btnWatchdog.addEventListener('click', () => {
+        btnWatchdog.disabled = true;
+        guardWatchdog.className = 'guard-badge tripped';
+        guardWatchdog.textContent = 'STALL (>500ms)';
+        logEvent('SAFETY', '[Watchdog] 500ms packet timeout -> NEUTRALIZE ALL INPUT');
+        neutralizeAll('WATCHDOG_TIMEOUT');
+
+        setTimeout(() => {
+          guardWatchdog.className = 'guard-badge';
+          guardWatchdog.textContent = 'ACTIVE (14 ms)';
+          btnWatchdog.disabled = false;
+        }, 1200);
+      });
+
+      // Emergency Kill Switch (Ctrl+Alt+F12)
+      const btnKill = document.getElementById('btn-emergency-kill');
+      btnKill.addEventListener('click', triggerKillSwitch);
+      window.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.altKey && e.key === 'F12') {
+          triggerKillSwitch();
+        }
+      });
+
+      function triggerKillSwitch() {
+        runtimeState.isArmed = false;
+        neutralizeAll('EMERGENCY_KILL_SWITCH');
+        btnArmed.className = 'big-toggle-btn disarmed';
+        labelArmed.textContent = 'RECEIVER DISARMED (SAFE)';
+        globalDot.className = 'dot disarmed';
+        globalStatus.textContent = 'KILL-SWITCH TRIGGERED';
+        document.getElementById('guard-killswitch').className = 'guard-badge tripped';
+        document.getElementById('guard-killswitch').textContent = 'TRIPPED';
+        logEvent('KILL', '🚨 [Ctrl+Alt+F12] EMERGENCY KILL-SWITCH ACTIVATED! ALL KEYS NEUTRALIZED!');
+      }
+
+      // Log Controls
+      document.getElementById('btn-pause-log').addEventListener('click', (e) => {
+        runtimeState.logPaused = !runtimeState.logPaused;
+        e.target.textContent = runtimeState.logPaused ? 'Resume' : 'Pause';
+      });
+      document.getElementById('btn-clear-log').addEventListener('click', () => {
+        document.getElementById('receiver-log').innerHTML = '';
+      });
+
+      // Pairing QR Code setup
+      const samplePairing = {
+        ips: ["192.168.1.145"],
+        port: 47789,
+        key: "4c8f3b2e7d1a9c0e5f8b6a3d2e1c4f7b0a9d8c7e6f5a4b3c2d1e0f9a8b7c6d5e",
+        name: "DESKTOP-GAMING"
+      };
+      renderPairingQRCode('qr-canvas', JSON.stringify(samplePairing));
+
+      document.getElementById('btn-regen-key').addEventListener('click', () => {
+        samplePairing.key = Array.from({length: 64}, () => Math.floor(Math.random()*16).toString(16)).join('');
+        document.getElementById('qr-key').textContent = samplePairing.key.substring(0, 8) + '...' + samplePairing.key.substring(61);
+        renderPairingQRCode('qr-canvas', JSON.stringify(samplePairing));
+        logEvent('STATUS', 'PSK Regenerated. Previously paired devices revoked.');
+      });
+
+      document.getElementById('btn-revoke-pairing').addEventListener('click', () => {
+        logEvent('STATUS', 'Device pairing revoked. Receiver returned to unconfigured state.');
+      });
+    }
+
+    function neutralizeAll(reason) {
+      runtimeState.activeKeys.clear();
+      runtimeState.activeMouse.clear();
+      runtimeState.isSprinting = false;
+      runtimeState.isADS = false;
+      document.querySelectorAll('.hud-control.active').forEach(b => b.classList.remove('active'));
+      updateLiveKeyBadges();
+      logEvent('SAFETY', `[Neutralize] Released all pressed keys and buttons (Trigger: ${reason})`);
+    }
+
+    function logEvent(type, text) {
+      if (runtimeState.logPaused) return;
+      const container = document.getElementById('receiver-log');
+      const row = document.createElement('div');
+      row.className = 'log-row';
+
+      const now = new Date();
+      const ts = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}.${now.getMilliseconds().toString().padStart(3,'0')}`;
+
+      let typeClass = 'log-type-kbm';
+      if (type === 'SAFETY') typeClass = 'log-type-safety';
+      if (type === 'KILL') typeClass = 'log-type-kill';
+      if (type === 'STATUS') typeClass = 'log-type-status';
+
+      row.innerHTML = `<span class="log-ts">[${ts}]</span> <span class="${typeClass}">[${type}]</span> <span>${text}</span>`;
+      container.appendChild(row);
+      container.scrollTop = container.scrollHeight;
+
+      if (container.children.length > 150) {
+        container.removeChild(container.firstChild);
+      }
+    }
+
+    /* =========================================================================
+       9. 120 Hz UDP Sender & Receiver Loop Simulation
+       ========================================================================= */
+    function start120HzLoop() {
+      setInterval(() => {
+        runtimeState.packetsCount++;
+        document.getElementById('val-packets-count').textContent = runtimeState.packetsCount;
+        runtimeState.sequenceNumber++;
+
+        // Only log if active keys or mouse or look deltas are moving
+        const hasInput = runtimeState.activeKeys.size > 0 || runtimeState.activeMouse.size > 0 || (runtimeState.packetsCount % 120 === 0);
+
+        if (hasInput && runtimeState.isArmed && runtimeState.isTargetFocused) {
+          const keysArr = Array.from(runtimeState.activeKeys).map(k => KEY_NAMES[k] || `Key${k}`);
+          const mouseArr = Array.from(runtimeState.activeMouse);
+          logEvent('KBM', `seq:${runtimeState.sequenceNumber} keys:[${keysArr.join(',')}] mouse:[${mouseArr.join(',')}] look:(${runtimeState.lookX}, ${runtimeState.lookY}) (MAC: ok)`);
+        }
+      }, 1000 / 120);
+    }
+
+    /* =========================================================================
+       10. JSON Export / Import Modal Handlers
+       ========================================================================= */
+    function setupModal() {
+      const modal = document.getElementById('json-modal');
+      const text = document.getElementById('modal-json-text');
+      const title = document.getElementById('modal-title');
+      const btnAction = document.getElementById('btn-modal-action');
+
+      document.getElementById('btn-export-json').addEventListener('click', () => {
+        title.textContent = 'Export Layout Profile (JSON)';
+        text.value = JSON.stringify(currentProfile, null, 2);
+        btnAction.style.display = 'none';
+        modal.classList.add('open');
+      });
+
+      document.getElementById('btn-import-json').addEventListener('click', () => {
+        title.textContent = 'Import Layout Profile (JSON)';
+        text.value = '';
+        btnAction.style.display = 'inline-flex';
+        modal.classList.add('open');
+      });
+
+      document.getElementById('btn-modal-close').addEventListener('click', () => {
+        modal.classList.remove('open');
+      });
+
+      document.getElementById('btn-modal-copy').addEventListener('click', () => {
+        navigator.clipboard.writeText(text.value).then(() => {
+          alert('Profile JSON copied to clipboard!');
+        });
+      });
+
+      btnAction.addEventListener('click', () => {
+        try {
+          const parsed = JSON.parse(text.value);
+          if (!parsed.profileName || !Array.isArray(parsed.controls)) {
+            throw new Error('Invalid schema: Missing profileName or controls array.');
+          }
+          currentProfile = parsed;
+          renderHUD();
+          renderEditorCanvas();
+          modal.classList.remove('open');
+          alert('Custom profile loaded successfully!');
+        } catch (err) {
+          alert(`Import Error: ${err.message}`);
+        }
+      });
+
+      document.getElementById('btn-reset-default').addEventListener('click', () => {
+        if (confirm('Reset HUD to default PUBG Mobile layout?')) {
+          currentProfile = JSON.parse(JSON.stringify(DEFAULT_PROFILE));
+          renderHUD();
+          renderEditorCanvas();
+          if (selectedControlId) selectControl(selectedControlId);
+        }
+      });
+
+      document.getElementById('btn-apply-inspector').addEventListener('click', applyInspectorChanges);
+    }
+
+    /* =========================================================================
+       11. Initialization & Tab Navigation
+       ========================================================================= */
+    function init() {
+      // Tab switcher
+      const tabs = document.querySelectorAll('.tab-btn');
+      tabs.forEach(btn => {
+        btn.addEventListener('click', () => {
+          tabs.forEach(t => t.classList.remove('active'));
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+          btn.classList.add('active');
+          const target = document.getElementById(btn.dataset.tab);
+          if (target) target.classList.add('active');
+
+          if (btn.dataset.tab === 'tab-editor') {
+            renderEditorCanvas();
+            if (currentProfile.controls.length > 0 && !selectedControlId) {
+              selectControl(currentProfile.controls[0].id);
+            }
+          }
+        });
+      });
+
+      // Populate KeyId dropdown (0..61)
+      const keySelect = document.getElementById('insp-keyid');
+      for (let i = 0; i <= 61; i++) {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = `${i}: ${KEY_NAMES[i] || 'Key ' + i}`;
+        keySelect.appendChild(opt);
+      }
+
+      renderHUD();
+      setupLookZone();
+      setupReceiverSimulation();
+      setupModal();
+      start120HzLoop();
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+{
+  "claim": "Normalized Levenshtein and Structural Diff Variance Calculator",
+  "true": "The module computes normalized diff variance between 0.0 and 1.0, normalizes comments and URLs, classifies trivial churn vs novel exploration, and accurately handles large multi-line and single-line files without false 100% variance spikes.",
+  "false": "The module reports 100% variance for 1-character edits in single-line files, fails on large inputs, contains stubs, or misclassifies structural changes."
+}

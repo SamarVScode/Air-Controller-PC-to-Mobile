@@ -1,0 +1,129 @@
+﻿name: Build and Release Air Controller
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build Windows Receiver (.NET 10 x64)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Run Receiver Tests
+        run: dotnet test windows-receiver/tests/PhoneGamepad.Tests/PhoneGamepad.Tests.csproj -c Release --verbosity normal
+
+      - name: Publish Single-File Executable
+        run: dotnet publish windows-receiver/src/PhoneGamepad.Receiver/PhoneGamepad.Receiver.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o dist/windows/
+
+      - name: Upload Windows Executable Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PhoneGamepad-Receiver-Windows-x64
+          path: dist/windows/PhoneGamepad.Receiver.exe
+          if-no-files-found: error
+
+  build-android:
+    name: Build Android Controller APK (Debug)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.10.2"
+
+      - name: Build Debug APK
+        working-directory: android-controller
+        run: gradle :app:assembleDebug --stacktrace
+
+      - name: Upload Android APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PhoneGamepad-Android-Debug-APK
+          path: android-controller/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: [build-windows, build-android]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Create Release Assets Directory
+        run: mkdir -p release-assets
+
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: PhoneGamepad-Receiver-Windows-x64
+          path: release-assets
+
+      - name: Download Android Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: PhoneGamepad-Android-Debug-APK
+          path: release-assets
+
+      - name: Verify Artifacts
+        run: |
+          ls -la release-assets
+          test -f release-assets/PhoneGamepad.Receiver.exe || exit 1
+          test -f release-assets/app-debug.apk || exit 1
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0
+          name: "Air Controller v1.0.0 (Debug APK & Windows Executable)"
+          body: |
+            # Air Controller - Phone-as-Gamepad v1.0.0
+
+            Complete Phone-as-Gamepad client and Windows receiver release.
+
+            ### Downloadable Assets
+            - **`PhoneGamepad.Receiver.exe`** (Windows x64): Standalone, self-contained single-file receiver. No .NET runtime installation required.
+            - **`app-debug.apk`** (Android): Touch HUD game controller with custom layout editor, zero-permission QR pairing, and 120 Hz UDP transmission.
+
+            ### Quick Installation & Usage
+            1. **Windows PC**:
+               - Run `PhoneGamepad.Receiver.exe` as Administrator (required for Win32 SendInput and UIPI bypass with elevated games).
+               - Select your game process from the dropdown (or leave blank to target whatever game has focus).
+               - Click **Arm Receiver** (or use the emergency kill switch `Ctrl+Alt+F12` to toggle).
+               - Keep the pairing QR code open on your screen.
+            2. **Android Phone**:
+               - Install and open `app-debug.apk`.
+               - Tap **Pair Controller** and scan the QR code displayed on your PC screen.
+               - Enjoy zero-latency gaming controls with customizable HUD layouts!
+          draft: false
+          prerelease: false
+          files: |
+            release-assets/PhoneGamepad.Receiver.exe
+            release-assets/app-debug.apk

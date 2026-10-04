@@ -1,0 +1,77 @@
+<Window x:Class="PhoneGamepad.Receiver.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Phone-as-Gamepad Windows 11 Receiver"
+        Height="550" Width="800"
+        Background="#0f172a" Foreground="#f8fafc"
+        FontFamily="Segoe UI"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Anti-Cheat Notice Banner -->
+        <Border Grid.Row="0" Background="#334155" CornerRadius="8" Padding="12" Margin="0,0,0,16">
+            <StackPanel Orientation="Vertical">
+                <TextBlock Text="⚠ FAIR PLAY &amp; ANTI-CHEAT FIRST-RUN NOTICE" FontWeight="Bold" Foreground="#38bdf8"/>
+                <TextBlock Text="This receiver injects hardware scan codes. Verify your target game's anti-cheat policy before using online. Test only in offline practice ranges."
+                           FontSize="12" Foreground="#cbd5e1" TextWrapping="Wrap"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Armed Switch & Controls -->
+        <Border Grid.Row="1" Background="#1e293b" CornerRadius="8" Padding="16" Margin="0,0,0,16">
+            <DockPanel LastChildFill="False">
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                    <Button x:Name="BtnArmedToggle" Content="ARM RECEIVER" Width="140" Height="40"
+                            Background="#dc2626" Foreground="White" FontWeight="Bold" Click="BtnArmedToggle_Click"/>
+                    <TextBlock x:Name="TxtArmedStatus" Text="DISARMED" VerticalAlignment="Center" Margin="16,0,0,0" FontWeight="SemiBold" Foreground="#94a3b8"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
+                    <TextBlock Text="Target Game:" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="#cbd5e1"/>
+                    <ComboBox x:Name="CmbProcessList" Width="200" Height="32" SelectionChanged="CmbProcessList_SelectionChanged"/>
+                    <Button x:Name="BtnRefreshProcesses" Content="⟳" Width="32" Height="32" Margin="8,0,0,0" Click="BtnRefreshProcesses_Click"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Status Dashboard -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Telemetry Card -->
+            <Border Grid.Column="0" Background="#1e293b" CornerRadius="8" Padding="16" Margin="0,0,8,0">
+                <StackPanel>
+                    <TextBlock Text="Connection Telemetry" FontWeight="Bold" Foreground="#38bdf8" Margin="0,0,0,12"/>
+                    <TextBlock x:Name="TxtSessionId" Text="Session ID: None" Margin="0,0,0,6" Foreground="#cbd5e1"/>
+                    <TextBlock x:Name="TxtClientEndpoint" Text="Client: Not connected" Margin="0,0,0,6" Foreground="#cbd5e1"/>
+                    <TextBlock x:Name="TxtPacketCount" Text="Total Packets: 0" Margin="0,0,0,6" Foreground="#cbd5e1"/>
+                    <TextBlock x:Name="TxtFocusState" Text="Target Focus: Not In Focus" Margin="0,0,0,6" Foreground="#f87171"/>
+                    <TextBlock x:Name="TxtKillSwitchHint" Text="Global Kill-Switch: Ctrl+Alt+F12" Margin="0,12,0,0" Foreground="#64748b" FontSize="11"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Pairing / Key Card -->
+            <Border Grid.Column="1" Background="#1e293b" CornerRadius="8" Padding="16" Margin="8,0,0,0">
+                <StackPanel>
+                    <TextBlock Text="LAN Pairing Security" FontWeight="Bold" Foreground="#38bdf8" Margin="0,0,0,12"/>
+                    <TextBlock Text="UDP Port: 47789" Margin="0,0,0,6" Foreground="#cbd5e1"/>
+                    <TextBlock x:Name="TxtPresharedKey" Text="PSK: Protected by DPAPI" Margin="0,0,0,6" Foreground="#cbd5e1"/>
+                    <Button x:Name="BtnNeutralizeAll" Content="Emergency Neutralize (Release All)" Margin="0,16,0,0" Height="36"
+                            Background="#b91c1c" Foreground="White" Click="BtnNeutralizeAll_Click"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Footer -->
+        <TextBlock Grid.Row="3" Text="PhoneGamepad Windows 11 Receiver v1.0.0 — Ready" Foreground="#64748b" Margin="0,12,0,0"/>
+    </Grid>
+</Window>

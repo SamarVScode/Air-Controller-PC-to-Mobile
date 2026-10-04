@@ -1,5 +1,41 @@
-node_modules/
-tests/__pycache__/
+﻿# Environment & Logs
 .env
 *.log
+orchestrator-debug.log
+.~lock.*
+
+# OS
+Thumbs.db
 .DS_Store
+
+# .NET / C#
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+dist/
+build/
+
+# Android / Gradle
+.gradle/
+**/build/
+*.apk
+*.aab
+.idea/
+*.iml
+local.properties
+.cxx/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+venv/
+
+# Antigravity / internal temp
+.agents/
+.gemini/
